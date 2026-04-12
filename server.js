@@ -494,7 +494,7 @@ async function TrigUartScriptProc(type, id, data)
 			{
 				let rx_id = readULE(data, 1, 2);
 				let rx_chunk_idx = data[3];
-				let rx_state = data[4];
+				let rx_state = toInt8(data[4]);
 				let chunk_next = rx_chunk_idx + 1;
 				
 				if(script_container.id === rx_id && rx_state === 1)
@@ -522,11 +522,12 @@ async function TrigUartScriptProc(type, id, data)
 			if(rx_cmd == 0x82)
 			{
 				let rx_id = readULE(data, 1, 2);
+				let rx_state = toInt8(data[3]);
 
 				if(script_container.id === rx_id)
 				{
 					// отвечаем в UI полученными и собранными данными
-					const msg = {cmd: 'ScriptDeleteResp', data: {id: rx_id}};
+					const msg = {cmd: 'ScriptDeleteResp', data: {id: rx_id, state: rx_state}};
 					await SendWSToAll(msg);
 				}
 			}
@@ -577,4 +578,9 @@ function writeULE(value, byteCount) {
         bytes.push((value >> (8 * i)) & 0xFF);
     }
     return bytes;
+}
+
+function toInt8(byte)
+{
+	return byte > 127 ? byte - 256 : byte;
 }
