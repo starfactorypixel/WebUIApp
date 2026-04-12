@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>UDP Pixel Viewer</title>
+  <style>
+	canvas {
+		border: 1px solid black;
+	}
+	
+	.params {
+		display: grid;
+		width: 308px;
+	}
+	
+	.params input {
+		width: 64px;
+	}
+
+	ui-element
+	{
+		  display: inline-block;
+		border: 1px solid black;
+		padding: 12px;
+	}
+  </style>
+</head>
+<body>
+
+<textarea id="brightness" rows="20" cols="100"></textarea><br><br>
+
+speed: <input type="text" id="speed" /><br>
+voltage: <input type="text" id="voltage" /><br>
+
+<button onclick="btn();">Подпись</button>
+<button onclick="btn2();">Одпись</button>
+
+
+
+<div class="ui-elements">
+	<ui-element type="button" id="0x0164" config='{"name":"Out 1 [${value}]", "type": "uint8", "scale": 1}'></ui-element>
+	<ui-element type="button" id="0x0165" config='{"name":"Out 2 [${value}]", "type": "uint8", "scale": 1}'></ui-element>
+	<ui-element type="button" id="0x0166" config='{"name":"Out 3 [${value}]", "type": "uint8", "scale": 1}'></ui-element>
+	<ui-element type="button" id="0x0167" config='{"name":"Out 4 [${value}]", "type": "uint8", "scale": 1}'></ui-element>
+	<ui-element type="button" id="0x0168" config='{"name":"Out 5 [${value}]", "type": "uint8", "scale": 1}'></ui-element>
+	<ui-element type="button" id="0x0169" config='{"name":"Out 6 ${icon1}", "type": "uint8", "scale": 1}'></ui-element>
+	<ui-element type="button" id="0x016A" config='{"name":"Out 7 [${value}]", "type": "uint8", "scale": 1}'></ui-element>
+	<ui-element type="button" id="0x016B" config='{"name":"POut 1 [${value}]", "type": "uint8", "scale": 1}'></ui-element>
+	<br>
+	<ui-element type="value" id="0x0110" config='{"name":"Speed: ${value:%02d}Kmh", "type": "uint16", "scale": 10}'></ui-element>
+	<ui-element type="value" id="0x0112" config='{"name":"Voltage: ${value:%04.1f}V", "type": "uint16", "scale": 10}'></ui-element>
+	<ui-element type="value" id="0x0114" config='{"name":"Current: ${value:%+5.1f}A", "type": "int16", "scale": 10}'></ui-element>
+	<ui-element type="value" id="0x0116" config='{"name":"Power: ${value:%+5d}W", "type": "int16", "scale": 1}'></ui-element>
+	<br>
+	
+</div>
+
+
+
+<script>
+
+
+class UiElement extends HTMLElement {
+  connectedCallback() {
+    console.log("Mounted UI element:", this.getAttribute("config"));
+  }
+}
+customElements.define("ui-element", UiElement);
+
+
+
+
+
+
+
+
+
+
+	const brightnessInput = document.getElementById('brightness');
+
+	const speed = document.getElementById('speed');
+	const voltage = document.getElementById('voltage');
+
+
+	const socket = new WebSocket('ws://localhost:8080');
+	socket.onopen = function(event)
+	{
+		console.log("WS: Соединение установлено:", event.target.url);
+		
+		//GetMode('RGB');
+		//GetMode('W1');
+		//GetMode('W2');
+		WSOnOpenEvent();
+	};
+	socket.onmessage = (message) => 
+	{
+		let msg;
+		try {
+			msg = JSON.parse(message.data);
+		} catch (err) {
+			console.error('Ошибка JSON:', err);
+			return;
+		}
+		
+		console.log(msg);
+		
+		switch(msg.id)
+		{
+			case 0x0110:
+				speed.value = readNumberFromArray(msg.data, 1, 'uint16', true) / 10;
+				break;
+			
+			case 0x018C:
+				voltage.value = readNumberFromArray(msg.data, 1, 'uint16', true) / 10.0;
+				break;
+		
+			default:
+				break;
+		}
+		
+		SetUIValue(msg.id, msg.data);
+	};
+
+
+
+
+	function SendData(type, id, bytes)
+	{
+		if(!Number.isInteger(type))
+			throw new TypeError('SendRaw: type param must be an Int');
+		if(!Number.isInteger(id))
+			throw new TypeError('SendRaw: id param must be an Int');
+		if(!Array.isArray(bytes))
+			throw new TypeError('SendRaw: bytes param must be an Array');
+		
+		const packet = 
+		{
+			cmd: "Raw",
+			type: type,
+			id: id,
+			bytes: bytes
+		};
+		socket.send( JSON.stringify(packet) );
+	}
+
+
+
+
+
+
+
+
+	function Pixel_Subscribe(params)
+	{
+		if(!Array.isArray(params))
+			throw new TypeError('Pixel_Subscribe: params must be an Array');
+		
+		let obj = 
+		{
+			cmd: "CANIDSub",
+			data: params
+		};
+		
+		socket.send( JSON.stringify(obj) );
+	}
+
+	function Pixel_Unsubscribe(params)
+	{
+		if(!Array.isArray(params))
+			throw new TypeError('Pixel_Unsubscribe: params must be an Array');
+		
+		let obj = 
+		{
+			cmd: "CANIDUnsub",
+			data: params
+		};
+		
+		socket.send( JSON.stringify(obj) );
+	}
+
+
+
+	function btn()
+	{
+		Pixel_Subscribe([0x0110, 0x018C, 0x0188]);
+	}
+
+	function btn2()
+	{
+		Pixel_Unsubscribe([0x0110, 0x018C, 0x0188]);
+	}
+
+
+
+
+
+/**
+ * Чтение числа из обычного массива JS через DataView
+ * @param {number[]} arr - обычный JS массив чисел 0-255
+ * @param {number} offset - смещение в байтах
+ * @param {'int8'|'uint8'|'int16'|'uint16'|'int32'|'uint32'|'float32'|'float64'} type
+ * @param {boolean} [littleEndian=false]
+ */
+function readNumberFromArray(arr, offset, type, littleEndian = false)
+{
+	if(arr.length <= offset) return null;
+  // превращаем массив в Uint8Array
+  const u8 = new Uint8Array(arr);
+  const view = new DataView(u8.buffer);
+
+  switch (type) {
+    case 'int8': return view.getInt8(offset);
+    case 'uint8': return view.getUint8(offset);
+    case 'int16': return view.getInt16(offset, littleEndian);
+    case 'uint16': return view.getUint16(offset, littleEndian);
+    case 'int32': return view.getInt32(offset, littleEndian);
+    case 'uint32': return view.getUint32(offset, littleEndian);
+    case 'float32': return view.getFloat32(offset, littleEndian);
+    case 'float64': return view.getFloat64(offset, littleEndian);
+    default: throw new Error('Unknown type: ' + type);
+  }
+}
+
+
+
+
+
+function WSOnOpenEvent()
+{
+
+document.querySelectorAll('ui-element').forEach((obj, index) => 
+{
+	switch( obj.getAttribute('type') )
+	{
+		case 'button':
+		{
+			let button = document.createElement('button');
+			//button.innerHTML = '***';
+			button.addEventListener('click', () => 
+			{
+				//obj.dataset.next_click = !obj.dataset.next_click;
+				SendData(0x15, parseInt(obj.getAttribute('id'), 16), [0x02]);
+			});
+			
+			
+
+			obj.appendChild(button);
+
+			SetUIValue(parseInt(obj.getAttribute('id'), 16));
+
+			Pixel_Subscribe( [parseInt(obj.getAttribute('id'), 16)] );
+			
+			
+			break;
+		}
+
+		case 'value':
+		{
+			let el = document.createElement('div');
+			el.innerHTML = "load";
+
+			obj.appendChild(el);
+			Pixel_Subscribe( [parseInt(obj.getAttribute('id'), 16)] );
+			
+			break;
+		}
+	}
+});
+
+};
+
+
+// id - int число
+// rx_data - массив принятых байт
+function SetUIValue(id, rx_data = [])
+{
+	let obj = document.querySelector(`ui-element[id="${toHex4(id)}"]`);
+	if(obj !== null)
+	{
+		let config = JSON.parse(obj.getAttribute('config'));
+		let value = readNumberFromArray(rx_data, 1, config.type, true);
+		let value_scaled = value / config.scale;
+		let data = { value: value, value_scaled: value_scaled, icon1: icon1(value) };
+		
+		switch( obj.getAttribute('type') )
+		{
+			case 'button':
+			{
+				//obj.querySelector('button').innerHTML = config.name.replace(/%(\w+)%/g, (_, key) => data[key]);
+				obj.querySelector('button').innerHTML = sprintfNamed(config.name, data);
+				
+				break;
+			}
+
+			case 'value':
+			{
+				//obj.querySelector('div').innerHTML = config.name.replace(/%(\w+)%/g, (_, key) => data[key]);
+				obj.querySelector('div').innerHTML = sprintfNamed(config.name, data);
+				
+				break;
+			}
+		}
+	};
+}
+
+function icon1(value)
+{
+	if(value === null) return '🟡';
+	if(value === 0) return '🔴';
+	return '🟢';
+}
+
+
+function toHex4(n) {
+  return "0x" + n.toString(16).toUpperCase().padStart(4, "0");
+}
+
+function sprintfNamed(str, data) {
+  return str.replace(/\$\{(\w+)(?::([^}]+))?\}/g, (_, key, format) => {
+    let value = data[key];
+    if (value == null) return "";
+
+    if (!format) return value;
+
+    // ---- printf-подобный разбор ----
+    const match = format.match(/%([ +]?)(0?)([0-9]*)(?:\.([0-9]+))?([dfsxX])/);
+
+    if (!match) return value;
+
+    let [, signFlag, zeroPad, width, precision, type] = match;
+
+    // ---- Тип ----
+    switch (type) {
+      case "d": // integer
+        value = parseInt(value);
+        break;
+
+      case "f": // float
+        value = Number(value).toFixed(precision ? Number(precision) : 0);
+        break;
+
+      case "x": // hex lower
+        value = Number(value).toString(16);
+        break;
+
+      case "X": // hex upper
+        value = Number(value).toString(16).toUpperCase();
+        break;
+
+      case "s":
+        value = String(value);
+        break;
+    }
+
+    // ---- Обработка знака ----
+    if (signFlag === "+" && value >= 0) {
+      value = "+" + value;
+    } 
+    else if (signFlag === " " && value >= 0) {
+      value = " " + value;
+    }
+
+    // ---- Дополнение нулями ----
+    if (width) {
+      const padChar = zeroPad ? "0" : " ";
+      value = value.toString().padStart(Number(width), padChar);
+    }
+
+    return value;
+  });
+}
+
+
+
+
+
+
+</script>
+
+</body>
+</html>

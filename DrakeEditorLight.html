@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Система блоков</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+		
+		.fields
+		{
+			width: 1000px;
+		}
+
+		.fields td
+		{
+			padding: 6px;
+		}
+		
+		.fields input
+		{
+			width: 100px;
+		}
+		.fields input[type="file"]
+		{
+			width: 200px;
+		}
+		
+		.fields textarea
+		{
+			width: 100%;
+			box-sizing: border-box;
+		}
+ 
+    </style>
+</head>
+<body>
+	<h1>Управление скриптами ESP32 ( DrakeScript )</h1>
+	
+	<table class="fields" border="1">
+		<tr>
+			<td colspan="2">
+				<div id="ws"></div>
+			</td>
+		</tr>
+		<tr>
+			<td><b>ID</b></td>
+			<td>
+				<input type="number" id="ScriptId" min="0" max="2047" required /> 
+				<input type="button" value="Прочитать" onclick="ScriptLoad()" /> 
+				<input type="button" value="Удалить" onclick="ScriptDelete()" />
+			</td>
+		</tr>
+		<tr>
+			<td><b>Info</b></td>
+			<td>
+				<div id="ScriptInfo"></div>
+			</td>
+		</tr>
+		<tr>
+			<td><b>Data</b></td>
+			<td>
+				<textarea id="ScriptData" rows="16"></textarea>
+			</td>
+		</tr>
+		<tr>
+			<td colspan="2">
+				<input type="file" id="loadFile" accept=".json" onchange="ScriptLoadFile(this)" /> 
+				<input type="button" value="Записать" onclick="ScriptSave()" /> 
+				<input type="button" value="Очистить" onclick="ClearForm()" />
+			</td>
+		</tr>
+	</table>
+	
+	<script type="text/javascript">
+		
+		const obj_id = document.getElementById('ScriptId');
+		const obj_info = document.getElementById('ScriptInfo');
+		const obj_data = document.getElementById('ScriptData');
+		const obj_file = document.getElementById('loadFile');
+		
+		const socket = new WebSocket('ws://localhost:8080');
+		socket.onopen = function(event)
+		{
+			console.log("WS: Соединение установлено:", event.target.url);
+		};
+		socket.onmessage = (message) => 
+		{
+			let msg;
+			try {
+				msg = JSON.parse(message.data);
+			} catch (err) {
+				console.error('Ошибка JSON:', err);
+				return;
+			}
+			
+			console.log(msg);
+
+			switch(msg.cmd)
+			{
+				// Ответ на ScriptLoad
+				case 'ScriptLoadResp':
+				{
+					obj_id.value = msg.data.id;
+					obj_info.textContent = 'Загрузили, инфа: будет..';
+					obj_data.value = formatHexBytes(msg.data.data);
+					
+					break;
+				}
+
+				// Ответ на ScriptSave
+				case 'ScriptSaveResp':
+				{
+					// msg.data.id;
+					obj_info.textContent = 'Сохранили, инфа: будет..';
+					
+					break;
+				}
+
+				// Ответ на ScriptDelete
+				case 'ScriptDeleteResp':
+				{
+					// msg.data.id;
+					obj_info.textContent = 'Удалили, инфа: будет..';
+					
+					break;
+				}
+			}
+		};
+		
+		function SendRaw(type, id, bytes)
+		{
+			if(!Number.isInteger(type))
+				throw new TypeError('SendRaw: type param must be an Int');
+			if(!Number.isInteger(id))
+				throw new TypeError('SendRaw: id param must be an Int');
+			if(!Array.isArray(bytes))
+				throw new TypeError('SendRaw: bytes param must be an Array');
+			
+			const packet = 
+			{
+				cmd: "Raw",
+				type: type,
+				id: id,
+				bytes: bytes
+			};
+			socket.send( JSON.stringify(packet) );
+		}
+		
+		
+		function ScriptLoad()
+		{
+			const id_val = parseInt(obj_id.value);
+			if(id_val === null) return;
+
+			const packet = 
+			{
+				cmd: "ScriptLoad", 
+				data: 
+				{
+					id: id_val
+				}
+			};
+			socket.send( JSON.stringify(packet) );
+		}
+		
+		function ScriptSave()
+		{
+			const id_val = parseInt(obj_id.value);
+			const data_val = parseHexBytes(obj_data.value);
+			if(id_val === null || data_val.length == 0) return;
+
+			const packet = 
+			{
+				cmd: "ScriptSave", 
+				data: 
+				{
+					id: id_val,
+					data: data_val
+				}
+			};
+			socket.send( JSON.stringify(packet) );
+		}
+		
+		function ScriptDelete()
+		{
+			const id_val = parseInt(obj_id.value);
+			if(id_val === null) return;
+
+			const packet = 
+			{
+				cmd: "ScriptDelete", 
+				data: 
+				{
+					id: id_val
+				}
+			};
+			socket.send( JSON.stringify(packet) );
+		}
+		
+		function ScriptLoadFile(input)
+		{
+			const file = input.files[0];
+			if(!file) return;
+
+			const reader = new FileReader();
+			reader.onload = function(e)
+			{
+				obj_data.value = e.target.result;
+			};
+			reader.onerror = function()
+			{
+				console.error('Ошибка чтения файла');
+			};
+			reader.readAsText(file);
+		}
+		
+		function ClearForm()
+		{
+			obj_info.textContent = '';
+			obj_data.value = '';
+			obj_file.value = '';
+		}
+		
+		
+		function parseHexBytes(input)
+		{
+			input = input
+				.replace(/\/\*[\s\S]*?\*\//g, '')	// /* ... */
+				.replace(/\/\/.*$/gm, '')			// // ...
+				.replace(/#.*$/gm, '')				// # ...
+				.replace(/;.*$/gm, '');				// ; ...
+			
+			const matches = input.match(/0x[0-9a-fA-F]{1,2}|[0-9a-fA-F]{1,2}/g);
+			if(!matches) return [];
+			
+			return matches.map(x => parseInt(x.replace(/^0x/i, ''), 16));
+		}
+
+		function formatHexBytes(bytes, options = {})
+		{
+			const {
+				prefix = "0x",
+				uppercase = true,
+				separator = " "
+			} = options;
+			
+			return bytes.map(b => 
+			{
+				let hex = b.toString(16).padStart(2, "0");
+				if(uppercase) hex = hex.toUpperCase();
+				return prefix + hex;
+			}).join(separator);
+		}
+
+	</script>
+	
+</body>
+</html>
