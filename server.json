@@ -1,0 +1,12 @@
+{
+  "serial": {
+    "port": "COM8",
+    "speed": 115200
+  },
+  "ws": {
+    "port": 8080
+  },
+  "pixel": {
+    "passkey": "AA 79 A5 BB 49 C6 4E C1"
+  }
+}

@@ -2,14 +2,14 @@
 // node server.js --serial-port=COM22 --serial-rate=115200 --ws-port=8080
 
 
-const argv = require('minimist')(process.argv.slice(2));
-console.log(argv);
+
+const config = require('./server.json');
 
 const { SerialPort } = require('serialport');
 const WebSocket = require('ws');
 
-const obj_serial = new SerialPort({ path: argv['serial-port'], baudRate: argv['serial-rate']/*, highWaterMark: 150000*/});
-const obj_wss = new WebSocket.Server({ port: argv['ws-port'] });
+const obj_serial = new SerialPort({ path: config.serial.port, baudRate: config.serial.speed/*, highWaterMark: 150000*/});
+const obj_wss = new WebSocket.Server({ port: config.ws.port });
 
 
 const originalLog = console.log;
@@ -231,10 +231,6 @@ obj_serial.on('open', () => {
 
 
 
-const CORE_SN_OLD = new Uint8Array([0xD0, 0xEF, 0x25, 0x5F, 0x2C, 0xB6, 0xD9, 0xD6]);
-const CORE_SN = new Uint8Array([0xAA, 0x79, 0xA5, 0xBB, 0x49, 0xC6, 0x4E, 0xC1]);
-
-
 async function OnRX(type, id, rxData)
 {
 	console.log("RX: ", type.toString(16).padStart(2, '0'), id.toString(16).padStart(4, '0'), [].map.call(rxData, x => x.toString(16).padStart(2, '0')).join(' '));
@@ -263,10 +259,12 @@ async function OnRX(type, id, rxData)
 			const random = new Uint8Array(16);
 			crypto.getRandomValues(random);
 
+			let passkey = fromHexReadable(config.pixel.passkey);
+
 			// Строка ( sn[8] + rand[16] )
 			const sn_rnd = new Uint8Array(24);
-			sn_rnd.set(CORE_SN);
-			sn_rnd.set(random, CORE_SN.length);
+			sn_rnd.set(passkey);
+			sn_rnd.set(random, passkey.length);
 
 			// SHA1( sn[8] + rand[16] )
 			const hashBuffer = await crypto.subtle.digest('SHA-1', sn_rnd);
@@ -537,6 +535,15 @@ async function TrigUartScriptProc(type, id, data)
 	}
 }
 
+
+
+function fromHexReadable(hex)
+{
+	const clean = hex.replace(/[^0-9a-fA-F]/g, '');
+	if(clean.length % 2 !== 0) throw new Error('Invalid hex');
+	
+	return new Uint8Array( clean.match(/.{1,2}/g).map(b => parseInt(b, 16)) );
+}
 
 
 
