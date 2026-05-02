@@ -105,6 +105,15 @@ obj_wss.on('connection', (ws, req) =>
 				
 				break;
 			}
+
+			// Запрос от UI на перезагрузку всех скриптов
+			case 'ScriptReload':
+			{
+				script_container.mode = 'reload';
+				SendUart(0x1B, 0x0000, [0x08]);
+				
+				break;
+			}
 			
 			// 
 			case 'Raw':
@@ -531,6 +540,17 @@ async function TrigUartScriptProc(type, id, data)
 			}
 			
 			break;
+		}
+		case 'reload':
+		{
+			if(rx_cmd == 0x88)
+			{
+				let rx_state = toInt8(data[1]);
+				
+				// отвечаем в UI полученными и собранными данными
+				const msg = {cmd: 'ScriptReloadResp', data: {state: rx_state}};
+				await SendWSToAll(msg);
+			}
 		}
 	}
 }
