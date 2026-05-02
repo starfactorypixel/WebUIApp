@@ -21,7 +21,7 @@
 		
 		.fields input
 		{
-			width: 100px;
+			min-width: 100px;
 		}
 		.fields input[type="file"]
 		{
@@ -35,6 +35,15 @@
 		}
  
     </style>
+
+
+	<script type="text/javascript">
+		fetch('./client.json').then(response => response.json()).then(data => {
+			console.log(data);
+			window.scripts_config = data;
+		}).catch(error => console.error('Error:', error));
+	</script>
+
 </head>
 <body>
 	<h1>Управление скриптами ESP32 ( DrakeScript )</h1>
@@ -48,7 +57,7 @@
 		<tr>
 			<td><b>ID</b></td>
 			<td>
-				<input type="number" id="ScriptId" min="0" max="2047" required /> 
+				<input type="text" id="ScriptId" pattern="[0-9a-fA-F]+" title="HEX ID" required /> 
 				<input type="button" value="Прочитать" onclick="ScriptLoad()" /> 
 				<input type="button" value="Удалить" onclick="ScriptDelete()" />
 			</td>
@@ -62,14 +71,15 @@
 		<tr>
 			<td><b>Data</b></td>
 			<td>
-				<textarea id="ScriptData" rows="16"></textarea>
+				<textarea id="ScriptData" rows="16" spellcheck="false"></textarea>
 			</td>
 		</tr>
 		<tr>
 			<td colspan="2">
 				<input type="file" id="loadFile" accept=".json" onchange="ScriptLoadFile(this)" /> 
 				<input type="button" value="Записать" onclick="ScriptSave()" /> 
-				<input type="button" value="Очистить" onclick="ClearForm()" />
+				<input type="button" value="Очистить форму" onclick="ClearForm()" /> 
+				<input type="button" value="Перезагрузить скрипты" onclick="ScriptReload()" /> 
 			</td>
 		</tr>
 	</table>
@@ -103,9 +113,10 @@
 				// Ответ на ScriptLoad
 				case 'ScriptLoadResp':
 				{
-					obj_id.value = msg.data.id;
+					obj_id.value = msg.data.id.toString(16).padStart(4, "0").toUpperCase();
 					obj_info.textContent = 'Загрузили, инфа: будет..';
-					obj_data.value = formatHexBytes(msg.data.data);
+					//obj_data.value = formatHexBytes(msg.data.data);
+					obj_data.value = parseBytes(msg.data.data);
 					
 					break;
 				}
@@ -125,6 +136,15 @@
 					// msg.data.id;
 					// msg.data.state;
 					obj_info.textContent = 'Удалили, инфа: будет..';
+					
+					break;
+				}
+
+				// Ответ на ScriptReload
+				case 'ScriptReloadResp':
+				{
+					// msg.data.state
+					obj_info.textContent = `Перезагрузили, статус: ${msg.data.state}.`;
 					
 					break;
 				}
@@ -153,7 +173,7 @@
 		
 		function ScriptLoad()
 		{
-			const id_val = parseInt(obj_id.value);
+			const id_val = parseInt(obj_id.value, 16);
 			if(id_val === null) return;
 
 			const packet = 
@@ -169,7 +189,7 @@
 		
 		function ScriptSave()
 		{
-			const id_val = parseInt(obj_id.value);
+			const id_val = parseInt(obj_id.value, 16);
 			const data_val = parseHexBytes(obj_data.value);
 			if(id_val === null || data_val.length == 0) return;
 
@@ -187,7 +207,7 @@
 		
 		function ScriptDelete()
 		{
-			const id_val = parseInt(obj_id.value);
+			const id_val = parseInt(obj_id.value, 16);
 			if(id_val === null) return;
 
 			const packet = 
@@ -225,6 +245,16 @@
 			obj_file.value = '';
 		}
 		
+		function ScriptReload()
+		{
+			const packet = 
+			{
+				cmd: "ScriptReload", 
+				data: {}
+			};
+			socket.send( JSON.stringify(packet) );
+		}
+		
 		
 		function parseHexBytes(input)
 		{
@@ -256,7 +286,160 @@
 			}).join(separator);
 		}
 
+
+
+		// Парсер команд //
+		
+		function readValue(bytes, offset, field)
+		{
+			switch(field.type)
+			{
+				case "byte":
+				case "uint8":
+				{
+					let val = bytes[offset];
+					return {value: val, size: 1};
+				}
+				
+				case "int8":
+				{
+					let val = (bytes[offset] << 24) >> 24;
+					return {value: val, size: 1};
+				}
+				
+				case "uint16":
+				{
+					let val = bytes[offset] | (bytes[offset + 1] << 8);
+					return {value: val, size: 2};
+				}
+
+				case "int16":
+				{
+					let val = bytes[offset] | (bytes[offset + 1] << 8);
+					if(val & 0x8000) val -= 0x10000;
+					return {value: val, size: 2};
+				}
+
+				case "uint32":
+				{
+					let val = bytes[offset] + (bytes[offset + 1] << 8) + (bytes[offset + 2] << 16) + (bytes[offset + 3] * 0x1000000);
+					return {value: val >>> 0, size: 4};
+				}
+
+				case "int32":
+				{
+					const val = bytes[offset] + (bytes[offset + 1] << 8) + (bytes[offset + 2] << 16) + (bytes[offset + 3] * 0x1000000);
+					return {value: val | 0, size: 4};
+				}
+				
+				default:
+					throw new Error("Unknown type: " + field.type);
+			}
+		}
+
+		function printValue(value, field)
+		{
+			const [type, pad] = field.print.split(':');
+			switch(type)
+			{
+				case 'hex':
+				{
+					const val = `0x${value.toString(16).padStart(pad, "0").toUpperCase()}`;
+					return val;
+				}
+				
+				default:
+					throw new Error("Unknown type: " + type);
+			}
+		}
+		
+		function parseArgs(bytes, format)
+		{
+			let offset = 1;		// первый байт это opcode
+			const args = [];
+			
+			for(const field of format)
+			{
+				let value;
+				let size;
+				
+				if(field.type === "reg")
+				{
+					value = scripts_config.registers[bytes[offset]] ?? `0x${bytes[offset].toString(16)}`;
+					size = 1;
+				}
+				else if(field.type === "enum")
+				{
+					const raw = bytes[offset];
+					value = scripts_config.enums[field.enum]?.[raw] ?? raw;
+					size = 1
+				}
+				else if(field.type === "can_id")
+				{
+					const raw = bytes[offset] | (bytes[offset + 1] << 8);
+					value = `0x${(raw & 0x0FFF).toString(16).padStart(4, "0").toUpperCase()}`;
+					size = 2;
+				}
+				else
+				{
+					const res = readValue(bytes, offset, field);
+					value = res.value;
+					size = res.size;
+
+					if(field.print)
+					{
+						value = printValue(value, field);
+					}
+				}
+				
+				args.push(`${field.name}: ${value}`);
+				offset += size;
+			}
+			
+			return args.join(", ");
+		}
+		
+		function parseBytes(bytes)
+		{
+			const opcodeMap = {};
+			for(const op of scripts_config.opcodes)
+			{
+				opcodeMap[parseInt(op.code, 16)] = op;
+			}
+			
+			const result = [];
+			let i = 0;
+			while(i < bytes.length)
+			{
+				const opcode = bytes[i];
+				const def = opcodeMap[opcode];
+				
+				if(!def)
+				{
+					result.push(`0x${opcode.toString(16).padStart(2, "0").toUpperCase()}  // Unknown`);
+					i++;
+					continue;
+				}
+				
+				const chunk = bytes.slice(i, i + def.length);
+				const formatted = chunk.map(b => `0x${b.toString(16).padStart(2, "0").toUpperCase()}`).join(" ");
+				let comment = def.name;
+				if(def.format)
+				{
+					const argsStr = parseArgs(chunk, def.format);
+					comment += `(${argsStr})`;
+				}
+				result.push(`// ${comment}\n${formatted}\n`);
+				
+				i += def.length;
+			}
+			
+			return result.join("\n");
+		}
+
+		// //
+		
 	</script>
-	
+
 </body>
 </html>
