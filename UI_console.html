@@ -139,7 +139,7 @@
 			{
 				if(wait_data.all === true || msg.data.id == wait_data.id)
 				{
-					const type = '0x' + msg.data.id.toString(16).padStart(2, "0").toUpperCase();
+					const type = '0x' + msg.data.type.toString(16).padStart(2, "0").toUpperCase();
 					const id = '0x' + msg.data.id.toString(16).padStart(4, "0").toUpperCase();
 					const data = formatHexBytes(msg.data.data);
 
