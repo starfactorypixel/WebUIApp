@@ -104,21 +104,21 @@ customElements.define("ui-element", UiElement);
 		
 		console.log(msg);
 		
-		switch(msg.id)
+		switch(msg.data.id)
 		{
 			case 0x0110:
-				speed.value = readNumberFromArray(msg.data, 1, 'uint16', true) / 10;
+				speed.value = readNumberFromArray(msg.data.data, 1, 'uint16', true) / 10;
 				break;
 			
 			case 0x018C:
-				voltage.value = readNumberFromArray(msg.data, 1, 'uint16', true) / 10.0;
+				voltage.value = readNumberFromArray(msg.data.data, 1, 'uint16', true) / 10.0;
 				break;
 		
 			default:
 				break;
 		}
 		
-		SetUIValue(msg.id, msg.data);
+		SetUIValue(msg.data.id, msg.data.data);
 	};
 
 

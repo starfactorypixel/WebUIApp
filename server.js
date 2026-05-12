@@ -308,9 +308,13 @@ async function OnRX(type, id, rxData)
 
 	const msg = 
 	{
-		type: type,
-		id: id,
-		data: Array.from(rxData)
+		cmd: 'Raw', 
+		data: 
+		{
+			type: type,
+			id: id,
+			data: Array.from(rxData)
+		}
 	};
 	SendWSToAll(msg);
 

@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+	<title>Консоль взаимодействия с системой</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<script src="utils.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+		
+		.fields
+		{
+			width: 1000px;
+		}
+
+		.fields td
+		{
+			padding: 6px;
+		}
+		
+		.fields input
+		{
+			box-sizing: border-box;
+			padding: 6px;
+			font-size: 20px;
+			font-style: revert-rule;
+			font-family: "Courier New", Courier, monospace;
+		}
+		
+		.fields textarea
+		{
+			width: 100%;
+			box-sizing: border-box;
+		}
+
+		#DataRX
+		{
+			height: 300px;
+			overflow-y: scroll;
+			overflow-x: hidden;
+			border: 1px solid #ccc;
+		}
+
+		.rx_field
+		{
+			margin: 3px;
+			padding: 3px;
+			font-family: "Courier New", Courier, monospace;
+		}
+		.rx_field.highlight
+		{
+			animation: fadeHighlight 2s ease forwards;
+		}
+		@keyframes fadeHighlight
+		{
+			0% {
+				background-color: rgba(255, 255, 0, 0.9);
+			}
+			100% {
+				background-color: transparent;
+			}
+		}
+ 
+    </style>
+</head>
+<body>
+	<h1>Консоль взаимодействия с системой</h1>
+	
+	<table class="fields" border="1">
+		<tr>
+			<td colspan="2">
+				<div id="ws"></div>
+			</td>
+		</tr>
+		<tr>
+			<td width="180"><b>Type</b><br>0x00 .. 0x1F</td>
+			<td>
+				<input type="text" id="TypeInput" pattern="[0-9a-fA-F]+" title="HEX Type" required />
+			</td>
+		</tr>
+		<tr>
+			<td><b>Id</b><br>0x0000 .. 0xFFFF</td>
+			<td>
+				<input type="text" id="IdInput" pattern="[0-9a-fA-F]+" title="HEX Id" required />
+			</td>
+		</tr>
+		<tr>
+			<td><b>Data</b><br>Any HEX data</td>
+			<td>
+				<input type="text" id="DataInput" pattern="[0-9a-fA-FXx ]+" title="HEX Data" style="width: 100%;" required />
+			</td>
+		</tr>
+		<tr>
+			<td colspan="2">
+				<input type="button" value="Отправить" onclick="SendForm()" /> 
+				<input type="button" value="Очистить всё" onclick="ClearForm(0)" /> 
+				<input type="button" value="Очистить RX" onclick="ClearForm(1)" /> 
+				<label>Слушать всё <input type="checkbox" onchange="ListenerChange(this)"/></label>
+			</td>
+		</tr>
+		<tr>
+			<td><b>RX data</b></td>
+			<td>
+				<div id="DataRX"></div>
+			</td>
+		</tr>
+	</table>
+	
+	<script type="text/javascript">
+		
+		const obj_ws = document.getElementById('ws');
+		const obj_type = document.getElementById('TypeInput');
+		const obj_id = document.getElementById('IdInput');
+		const obj_data = document.getElementById('DataInput');
+		const obj_data_rx = document.getElementById('DataRX');
+
+		const wait_data = {id: 0};
+		
+		const socket = new WebSocket('ws://localhost:8080');
+		socket.onopen = function(event)
+		{
+			console.log("WS: Соединение установлено:", event.target.url);
+		};
+		socket.onmessage = (message) => 
+		{
+			let msg;
+			try {
+				msg = JSON.parse(message.data);
+			} catch (err) {
+				console.error('Ошибка JSON:', err);
+				return;
+			}
+			
+			console.log(msg);
+
+			if(msg.cmd == "Raw")
+			{
+				if(wait_data.all === true || msg.data.id == wait_data.id)
+				{
+					const type = '0x' + msg.data.id.toString(16).padStart(2, "0").toUpperCase();
+					const id = '0x' + msg.data.id.toString(16).padStart(4, "0").toUpperCase();
+					const data = formatHexBytes(msg.data.data);
+
+					const div = document.createElement('div');
+					div.className = 'rx_field highlight';
+
+					div.innerHTML = `
+						<span>Type: ${type}</span>
+						<span>Id: ${id}</span>
+						<br>
+						<span>Data: ${data}</span>
+					`;
+					obj_data_rx.prepend(div);
+
+					wait_data.id = 0;
+				}
+			}
+		};
+		
+		function SendRaw(type, id, bytes)
+		{
+			if(!Number.isInteger(type))
+				throw new TypeError('SendRaw: type param must be an Int');
+			if(!Number.isInteger(id))
+				throw new TypeError('SendRaw: id param must be an Int');
+			if(!Array.isArray(bytes))
+				throw new TypeError('SendRaw: bytes param must be an Array');
+			
+			const packet = 
+			{
+				cmd: "Raw",
+				type: type,
+				id: id,
+				bytes: bytes
+			};
+			socket.send( JSON.stringify(packet) );
+		}
+
+
+		function SendForm()
+		{
+			const type_val = parseInt(obj_type.value, 16);
+			const id_val = parseInt(obj_id.value, 16);
+			const data_val = parseHexBytes(obj_data.value);
+			
+			if(type_val === null || id_val === null || data_val === null) return;
+
+			SendRaw(type_val, id_val, data_val);
+
+			wait_data.id = id_val;
+		}
+		
+		function ClearForm(mode)
+		{
+			if(mode == 0)
+			{
+				obj_ws.textContent = '';
+				obj_type.value = '';
+				obj_id.value = '';
+				obj_data.value = '';
+				obj_data_rx.innerHTML = '';
+			}
+			
+			if(mode == 1)
+			{
+				obj_data_rx.innerHTML = '';
+			}
+		}
+
+		function ListenerChange(obj)
+		{
+			wait_data.all = obj.checked;
+		}
+
+	</script>
+
+</body>
+</html>
