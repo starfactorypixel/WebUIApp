@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <title>UDP Pixel Viewer</title>
+  <script src="utils.js"></script>
+  <script src="BlockInfo.js"></script>
   <style>
 	canvas {
 		border: 1px solid black;
@@ -22,6 +24,17 @@
 		  display: inline-block;
 		border: 1px solid black;
 		padding: 12px;
+	}
+
+	.device-block
+	{
+display: inline-block;
+  background-color: aqua;
+  margin: 10px;
+  padding: 10px;
+  border: 1px solid #aaa;
+  border-radius: 6px;
+  width: 220px;
 	}
   </style>
 </head>
@@ -54,6 +67,11 @@ voltage: <input type="text" id="voltage" /><br>
 	<br>
 	
 </div>
+
+
+
+
+<div id="blocksContainer"></div>
 
 
 
@@ -102,7 +120,8 @@ customElements.define("ui-element", UiElement);
 			return;
 		}
 		
-		console.log(msg);
+		if(msg.data.type == 0x05)
+			console.log(msg);
 		
 		switch(msg.data.id)
 		{
@@ -116,6 +135,14 @@ customElements.define("ui-element", UiElement);
 		
 			default:
 				break;
+		}
+
+		if(msg.data.type == 0x05)
+		{
+			if(msg.data.id == 1)
+			{
+				processPacket(msg.data.data);
+			}
 		}
 		
 		SetUIValue(msg.data.id, msg.data.data);

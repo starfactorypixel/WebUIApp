@@ -28,3 +28,22 @@ function formatHexBytes(bytes, options = {})
 		return prefix + hex;
 	}).join(separator);
 }
+
+function int2hex(num, pad)
+{
+	return '0x' + num.toString(16).padStart(pad, "0").toUpperCase();
+}
+
+function fastFormatMs(ms) {
+  // Битовое смещение ~~ работает как сверхбыстрый Math.floor
+  const hr = ~~(ms / 3600000);
+  const min = ~~((ms % 3600000) / 60000);
+  const sec = ~~((ms % 60000) / 1000);
+  const msec = ms % 1000;
+
+  // Быстрая ручная склейка строк без массивов
+  return (hr < 10 ? '0' + hr : hr) + ':' +
+         (min < 10 ? '0' + min : min) + ':' +
+         (sec < 10 ? '0' + sec : sec) + '.' +
+         (msec < 10 ? '00' + msec : msec < 100 ? '0' + msec : msec);
+}
