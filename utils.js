@@ -47,3 +47,96 @@ function fastFormatMs(ms) {
          (sec < 10 ? '0' + sec : sec) + '.' +
          (msec < 10 ? '00' + msec : msec < 100 ? '0' + msec : msec);
 }
+
+function getRandomInt(min, max)
+{
+	min = Math.ceil(min);
+	max = Math.floor(max);
+	return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function toHex4(n) {
+  return "0x" + n.toString(16).toUpperCase().padStart(4, "0");
+}
+
+function sprintfNamed(str, data) {
+  return str.replace(/\$\{(\w+)(?::([^}]+))?\}/g, (_, key, format) => {
+    let value = data[key];
+    if (value == null) return "";
+
+    if (!format) return value;
+
+    // ---- printf-подобный разбор ----
+    const match = format.match(/%([ +]?)(0?)([0-9]*)(?:\.([0-9]+))?([dfsxX])/);
+
+    if (!match) return value;
+
+    let [, signFlag, zeroPad, width, precision, type] = match;
+
+    // ---- Тип ----
+    switch (type) {
+      case "d": // integer
+        value = parseInt(value);
+        break;
+
+      case "f": // float
+        value = Number(value).toFixed(precision ? Number(precision) : 0);
+        break;
+
+      case "x": // hex lower
+        value = Number(value).toString(16);
+        break;
+
+      case "X": // hex upper
+        value = Number(value).toString(16).toUpperCase();
+        break;
+
+      case "s":
+        value = String(value);
+        break;
+    }
+
+    // ---- Обработка знака ----
+    if (signFlag === "+" && value >= 0) {
+      value = "+" + value;
+    } 
+    else if (signFlag === " " && value >= 0) {
+      value = " " + value;
+    }
+
+    // ---- Дополнение нулями ----
+    if (width) {
+      const padChar = zeroPad ? "0" : " ";
+      value = value.toString().padStart(Number(width), padChar);
+    }
+
+    return value;
+  });
+}
+
+/**
+ * Чтение числа из обычного массива JS через DataView
+ * @param {number[]} arr - обычный JS массив чисел 0-255
+ * @param {number} offset - смещение в байтах
+ * @param {'int8'|'uint8'|'int16'|'uint16'|'int32'|'uint32'|'float32'|'float64'} type
+ * @param {boolean} [littleEndian=false]
+ */
+function readNumberFromArray(arr, offset, type, littleEndian = false)
+{
+	if(arr.length <= offset) return null;
+  // превращаем массив в Uint8Array
+  const u8 = new Uint8Array(arr);
+  const view = new DataView(u8.buffer);
+
+  switch (type) {
+    case 'int8': return view.getInt8(offset);
+    case 'uint8': return view.getUint8(offset);
+    case 'int16': return view.getInt16(offset, littleEndian);
+    case 'uint16': return view.getUint16(offset, littleEndian);
+    case 'int32': return view.getInt32(offset, littleEndian);
+    case 'uint32': return view.getUint32(offset, littleEndian);
+    case 'float32': return view.getFloat32(offset, littleEndian);
+    case 'float64': return view.getFloat64(offset, littleEndian);
+    default: throw new Error('Unknown type: ' + type);
+  }
+}

@@ -25,28 +25,40 @@
 		border: 1px solid black;
 		padding: 12px;
 	}
-
+	ui-element .title
+	{
+		font-weight: bold;
+	}
+	
 	.device-block
 	{
-display: inline-block;
-  background-color: aqua;
-  margin: 10px;
-  padding: 10px;
-  border: 1px solid #aaa;
-  border-radius: 6px;
-  width: 220px;
+		display: inline-block;
+		background-color: aqua;
+		margin: 10px;
+		padding: 10px;
+		border: 1px solid #aaa;
+		border-radius: 6px;
+		width: 220px;
+	}
+
+	.objs
+	{
+		display: grid;
+		grid-auto-flow: column;
+		grid-template-rows: repeat(8, auto);
+	}
+	.stream-list
+	{
+		padding: 6px;
+		background-color: aquamarine;
+		margin: 6px;
+		border: 1px black solid;
+		text-align: center;
 	}
   </style>
 </head>
 <body>
 
-<textarea id="brightness" rows="20" cols="100"></textarea><br><br>
-
-speed: <input type="text" id="speed" /><br>
-voltage: <input type="text" id="voltage" /><br>
-
-<button onclick="btn();">Подпись</button>
-<button onclick="btn2();">Одпись</button>
 
 
 
@@ -65,6 +77,8 @@ voltage: <input type="text" id="voltage" /><br>
 	<ui-element type="value" id="0x0114" config='{"name":"Current: ${value:%+5.1f}A", "type": "int16", "scale": 10}'></ui-element>
 	<ui-element type="value" id="0x0116" config='{"name":"Power: ${value:%+5d}W", "type": "int16", "scale": 1}'></ui-element>
 	<br>
+
+	<ui-element type="stream" id="0x0190" config='{"name":"Batt 1 cells", "format": "${number:%02d}: ${value:%1.3f}V", "type": "uint16", "scale": 1000}'></ui-element>
 	
 </div>
 
@@ -94,10 +108,6 @@ customElements.define("ui-element", UiElement);
 
 
 
-	const brightnessInput = document.getElementById('brightness');
-
-	const speed = document.getElementById('speed');
-	const voltage = document.getElementById('voltage');
 
 
 	const socket = new WebSocket('ws://localhost:8080');
@@ -119,26 +129,11 @@ customElements.define("ui-element", UiElement);
 			console.error('Ошибка JSON:', err);
 			return;
 		}
-		
-		if(msg.data.type == 0x05)
-			console.log(msg);
-		
-		switch(msg.data.id)
-		{
-			case 0x0110:
-				speed.value = readNumberFromArray(msg.data.data, 1, 'uint16', true) / 10;
-				break;
-			
-			case 0x018C:
-				voltage.value = readNumberFromArray(msg.data.data, 1, 'uint16', true) / 10.0;
-				break;
-		
-			default:
-				break;
-		}
 
 		if(msg.data.type == 0x05)
 		{
+			console.log(msg);
+
 			if(msg.data.id == 1)
 			{
 				processPacket(msg.data.data);
@@ -207,46 +202,10 @@ customElements.define("ui-element", UiElement);
 
 
 
-	function btn()
-	{
-		Pixel_Subscribe([0x0110, 0x018C, 0x0188]);
-	}
-
-	function btn2()
-	{
-		Pixel_Unsubscribe([0x0110, 0x018C, 0x0188]);
-	}
 
 
 
 
-
-/**
- * Чтение числа из обычного массива JS через DataView
- * @param {number[]} arr - обычный JS массив чисел 0-255
- * @param {number} offset - смещение в байтах
- * @param {'int8'|'uint8'|'int16'|'uint16'|'int32'|'uint32'|'float32'|'float64'} type
- * @param {boolean} [littleEndian=false]
- */
-function readNumberFromArray(arr, offset, type, littleEndian = false)
-{
-	if(arr.length <= offset) return null;
-  // превращаем массив в Uint8Array
-  const u8 = new Uint8Array(arr);
-  const view = new DataView(u8.buffer);
-
-  switch (type) {
-    case 'int8': return view.getInt8(offset);
-    case 'uint8': return view.getUint8(offset);
-    case 'int16': return view.getInt16(offset, littleEndian);
-    case 'uint16': return view.getUint16(offset, littleEndian);
-    case 'int32': return view.getInt32(offset, littleEndian);
-    case 'uint32': return view.getUint32(offset, littleEndian);
-    case 'float32': return view.getFloat32(offset, littleEndian);
-    case 'float64': return view.getFloat64(offset, littleEndian);
-    default: throw new Error('Unknown type: ' + type);
-  }
-}
 
 
 
@@ -257,7 +216,11 @@ function WSOnOpenEvent()
 
 document.querySelectorAll('ui-element').forEach((obj, index) => 
 {
-	switch( obj.getAttribute('type') )
+	const obj_type = obj.getAttribute('type');
+	const obj_id = parseInt(obj.getAttribute('id'), 16);
+	const obj_cfg = JSON.parse(obj.getAttribute('config'));
+	
+	switch(obj_type)
 	{
 		case 'button':
 		{
@@ -266,16 +229,16 @@ document.querySelectorAll('ui-element').forEach((obj, index) =>
 			button.addEventListener('click', () => 
 			{
 				//obj.dataset.next_click = !obj.dataset.next_click;
-				SendData(0x15, parseInt(obj.getAttribute('id'), 16), [0x02]);
+				SendData(0x15, obj_id, [0x02]);
 			});
 			
 			
 
 			obj.appendChild(button);
 
-			SetUIValue(parseInt(obj.getAttribute('id'), 16));
+			SetUIValue(obj_id);
 
-			Pixel_Subscribe( [parseInt(obj.getAttribute('id'), 16)] );
+			Pixel_Subscribe( [obj_id] );
 			
 			
 			break;
@@ -287,7 +250,32 @@ document.querySelectorAll('ui-element').forEach((obj, index) =>
 			el.innerHTML = "load";
 
 			obj.appendChild(el);
-			Pixel_Subscribe( [parseInt(obj.getAttribute('id'), 16)] );
+			Pixel_Subscribe( [obj_id] );
+			
+			break;
+		}
+		
+		
+		case 'stream':
+		{
+			const el_root = document.createElement('div');
+			el_root.innerHTML = `
+				<div class="title">${obj_cfg.name}</div>
+				<div class="objs"></div>
+				<div class="ctrl"></div>
+			`;
+			
+			const button = document.createElement('button');
+			button.textContent = 'Запрос';
+			button.addEventListener('click', () =>
+			{
+				SendData(0x15, obj_id, [0x11]);
+			});
+			
+			el_root.querySelector('.ctrl').appendChild(button);
+			obj.appendChild(el_root);
+			
+			Pixel_Subscribe([obj_id]);
 			
 			break;
 		}
@@ -305,9 +293,9 @@ function SetUIValue(id, rx_data = [])
 	if(obj !== null)
 	{
 		let config = JSON.parse(obj.getAttribute('config'));
-		let value = readNumberFromArray(rx_data, 1, config.type, true);
-		let value_scaled = value / config.scale;
-		let data = { value: value, value_scaled: value_scaled, icon1: icon1(value) };
+		let value_raw = readNumberFromArray(rx_data, 1, config.type, true);
+		let value = value_raw / config.scale;
+		let data = { value: value, value_raw: value_raw, icon1: icon1(value_raw) };
 		
 		switch( obj.getAttribute('type') )
 		{
@@ -326,6 +314,36 @@ function SetUIValue(id, rx_data = [])
 				
 				break;
 			}
+			
+			// 
+			case 'stream':
+			{
+				const rx_num = readNumberFromArray(rx_data, 1, config.type, true);		// Потом переделать num на uint8
+				const rx_val_raw = readNumberFromArray(rx_data, 3, config.type, true);
+				//rx_val_raw += getRandomInt(3200, 4200);
+				const rx_value = rx_val_raw / config.scale;
+				const template_data = {number: rx_num, value: rx_value, value_raw: rx_val_raw};
+				
+				const objs = obj.querySelector('.objs');
+				if(objs === null) break;
+				
+				let cell_obj = objs.querySelector(`span[data-number="${rx_num}"]`);
+				if(cell_obj !== null)
+				{
+					cell_obj.textContent = sprintfNamed(config.format, template_data);
+				}
+				else
+				{
+					cell_obj = document.createElement('span');
+					cell_obj.classList.add('stream-list');
+					cell_obj.dataset.number = rx_num;
+					cell_obj.textContent = sprintfNamed(config.format, template_data);
+					
+					objs.appendChild(cell_obj);
+				}
+				
+				break;
+			}
 		}
 	};
 }
@@ -338,64 +356,7 @@ function icon1(value)
 }
 
 
-function toHex4(n) {
-  return "0x" + n.toString(16).toUpperCase().padStart(4, "0");
-}
 
-function sprintfNamed(str, data) {
-  return str.replace(/\$\{(\w+)(?::([^}]+))?\}/g, (_, key, format) => {
-    let value = data[key];
-    if (value == null) return "";
-
-    if (!format) return value;
-
-    // ---- printf-подобный разбор ----
-    const match = format.match(/%([ +]?)(0?)([0-9]*)(?:\.([0-9]+))?([dfsxX])/);
-
-    if (!match) return value;
-
-    let [, signFlag, zeroPad, width, precision, type] = match;
-
-    // ---- Тип ----
-    switch (type) {
-      case "d": // integer
-        value = parseInt(value);
-        break;
-
-      case "f": // float
-        value = Number(value).toFixed(precision ? Number(precision) : 0);
-        break;
-
-      case "x": // hex lower
-        value = Number(value).toString(16);
-        break;
-
-      case "X": // hex upper
-        value = Number(value).toString(16).toUpperCase();
-        break;
-
-      case "s":
-        value = String(value);
-        break;
-    }
-
-    // ---- Обработка знака ----
-    if (signFlag === "+" && value >= 0) {
-      value = "+" + value;
-    } 
-    else if (signFlag === " " && value >= 0) {
-      value = " " + value;
-    }
-
-    // ---- Дополнение нулями ----
-    if (width) {
-      const padChar = zeroPad ? "0" : " ";
-      value = value.toString().padStart(Number(width), padChar);
-    }
-
-    return value;
-  });
-}
 
 
 
