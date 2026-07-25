@@ -39,7 +39,7 @@
 
 
 	<script type="text/javascript">
-		fetch('./client.json').then(response => response.json()).then(data => {
+		fetch('./drake_script.json').then(response => response.json()).then(data => {
 			console.log(data);
 			window.scripts_config = data;
 		}).catch(error => console.error('Error:', error));
