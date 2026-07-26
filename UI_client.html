@@ -55,6 +55,13 @@
 		border: 1px black solid;
 		text-align: center;
 	}
+
+	.radios label
+	{
+		display: flex;
+		padding: 6px;
+		background-color: bisque;
+	}
   </style>
 </head>
 <body>
@@ -79,6 +86,10 @@
 	<br>
 
 	<ui-element type="stream" id="0x0190" config='{"name":"Batt 1 cells", "format": "${number:%02d}: ${value:%1.3f}V", "type": "uint16", "scale": 1000}'></ui-element>
+
+	<br>
+
+	<ui-element type="radio" id="0x0106" config='{"name":"КПП 1", "radios": "0:N,1:F,2:R,4:L,8:B", "readonly": false, "type": "uint8"}'></ui-element>
 	
 </div>
 
@@ -255,7 +266,7 @@ document.querySelectorAll('ui-element').forEach((obj, index) =>
 			break;
 		}
 		
-		
+		// 
 		case 'stream':
 		{
 			const el_root = document.createElement('div');
@@ -273,6 +284,44 @@ document.querySelectorAll('ui-element').forEach((obj, index) =>
 			});
 			
 			el_root.querySelector('.ctrl').appendChild(button);
+			obj.appendChild(el_root);
+			
+			Pixel_Subscribe([obj_id]);
+			
+			break;
+		}
+		
+		// 
+		case 'radio':
+		{
+			const el_root = document.createElement('div');
+			el_root.innerHTML = `
+				<div class="title">${obj_cfg.name}</div>
+				<div class="radios"></div>
+			`;
+
+
+			obj_cfg.radios.split(',').forEach(item => 
+			{
+				const [value, name] = item.split(':');
+				
+				const radio = document.createElement('input');
+				radio.type = 'radio';
+				radio.name = 'id' + obj_id;
+				radio.value = value;
+				radio.disabled = obj_cfg.readonly;
+				radio.addEventListener('click', () => 
+				{
+					SendData(0x15, obj_id, [0x01, value]);			// нада value учитывая config.type слать
+				});
+				
+				const label = document.createElement('label');
+				label.textContent = name;
+				label.prepend(radio);
+
+				el_root.querySelector('.radios').appendChild(label);
+			});
+			
 			obj.appendChild(el_root);
 			
 			Pixel_Subscribe([obj_id]);
@@ -341,6 +390,19 @@ function SetUIValue(id, rx_data = [])
 					
 					objs.appendChild(cell_obj);
 				}
+				
+				break;
+			}
+
+			// 
+			case 'radio':
+			{
+				let value_raw = readNumberFromArray(rx_data, 1, config.type, true);
+
+				const radio = obj.querySelector('.radios input[value="' + value_raw + '"]');
+				if(radio === null) break;
+				
+				radio.checked = true;
 				
 				break;
 			}
