@@ -129,6 +129,7 @@ function readNumberFromArray(arr, offset, type, littleEndian = false)
   const view = new DataView(u8.buffer);
 
   switch (type) {
+	case 'bool': return view.getUint8(offset);
     case 'int8': return view.getInt8(offset);
     case 'uint8': return view.getUint8(offset);
     case 'int16': return view.getInt16(offset, littleEndian);
@@ -139,4 +140,36 @@ function readNumberFromArray(arr, offset, type, littleEndian = false)
     case 'float64': return view.getFloat64(offset, littleEndian);
     default: throw new Error('Unknown type: ' + type);
   }
+}
+
+
+function writeNumberToArray(value, type, littleEndian = false)
+{
+	const types =
+	{
+		bool:    ['setUint8',   1, value ? 1 : 0],
+		int8:    ['setInt8',    1, value],
+		uint8:   ['setUint8',   1, value],
+		int16:   ['setInt16',   2, value],
+		uint16:  ['setUint16',  2, value],
+		int32:   ['setInt32',   4, value],
+		uint32:  ['setUint32',  4, value],
+		float32: ['setFloat32', 4, value],
+		float64: ['setFloat64', 8, value],
+	};
+
+	const t = types[type];
+	if(!t) throw new Error('Unknown type: ' + type);
+
+	const [method, size, val] = t;
+
+	const buffer = new ArrayBuffer(size);
+	const view = new DataView(buffer);
+
+	if(size === 1)
+		view[method](0, val);
+	else
+		view[method](0, val, littleEndian);
+
+	return Array.from(new Uint8Array(buffer));
 }

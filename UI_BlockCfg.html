@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+	<title>Система настроек блоков</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<script src="utils.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+		.param-obj
+		{
+			display: flex;
+			gap: 16px;
+			align-items: center;
+			padding: 6px;
+			border: 1px solid #000000;
+			background-color: rgba(193, 255, 197, 0.9);
+		}
+
+		.param-obj div
+		{
+			/*border: 1px solid #000000;*/
+		}
+
+		.param_id
+		{
+			width: 26px;
+			text-align: right;
+			font-size: 20px;
+			font-weight: bold;
+		}
+		.param_namedisc
+		{
+			width: 350px;
+		}
+		.param_name
+		{
+			font-size: 16px;
+			font-weight: bold;
+		}
+		.param_disc
+		{
+			font-size: 12px;
+		}
+		.param_field
+		{
+			width: 200px;
+		}
+		.param_field input
+		{
+			width: 150px;
+			padding: 4px;
+			-moz-appearance: textfield;
+		}
+		.param_ctrl
+		{
+			
+		}
+
+
+ 
+    </style>
+</head>
+<body>
+	<h1>Система настроек блоков</h1>
+
+
+
+	<div id="params_container"></div>
+	<br>
+	<button onclick="ReadAllParam()" title="Прочитать всё">📥</button>
+
+
+
+	<script type="text/javascript">
+	
+		const BLOCK_TYPE = 30;
+		const BLOCK_ID = 0x0160;
+		const CFG_ID = BLOCK_ID + 1;
+		
+		
+		const params_container = document.getElementById('params_container');
+		
+		async function RenderUI(block_type)
+		{
+			const response = await fetch('BlockCfgData.json');
+			const data = await response.json();
+
+			let block_json_data = null;
+			data.forEach((block) => 
+			{
+				if(block.board_type == block_type)
+				{
+					block_json_data = block;
+					return;
+				}
+			});
+
+			console.log(block_json_data);
+
+			block_json_data.params.forEach((param) => 
+			{
+				const root_obj = document.createElement('div');
+				root_obj.classList.add('param-obj');
+				root_obj.dataset.id = param.id;
+				root_obj.dataset.data = JSON.stringify(param);
+				root_obj.innerHTML = `
+				<div class="param_id">${param.id}</div>
+				<div class="param_namedisc">
+					<div class="param_name">${param.name}</div>
+					<div class="param_disc">${param.disc}</div>
+				</div>
+				<div class="param_field">
+					<input type="number" min="${param.filter.min}" max="${param.filter.max}" step="${param.filter.step}" />
+				</div>
+				<div class="param_ctrl">
+					<button onclick="ReadParam(this)" title="Прочитать">📥</button> 
+					<button onclick="WriteParam(this)" title="Записать">💾</button> 
+					<button onclick="ResetParam(this)" title="Сбросить">🔄</button> 
+				</div>`;
+				
+				params_container.appendChild(root_obj);
+			});
+
+			ReadAllParam();
+		}
+		
+		
+		function ReadParam(obj)
+		{
+			const root = obj.closest('.param-obj');
+			const field = root.querySelector('.param_field input');
+			const data = JSON.parse(root.dataset.data);
+
+			field.disabled = true;
+
+			SendRaw(0x15, CFG_ID, [0x37, 0x01, data.id]);
+		}
+
+		function ReadAllParam()
+		{
+			const buttons = params_container.querySelectorAll('.param-obj .param_ctrl button:first-child');
+			buttons.forEach((button) => 
+			{
+				button.click();
+			});
+		}
+		
+		function WriteParam(obj)
+		{
+			const root = obj.closest('.param-obj');
+			const field = root.querySelector('.param_field input');
+			const data = JSON.parse(root.dataset.data);
+			
+			if(field.reportValidity() == false) return;
+			
+			field.disabled = true;
+			//field.classList.add('input-wait');
+
+			const value = writeNumberToArray(parseInt(field.value), data.type, true);
+			SendRaw(0x15, CFG_ID, [0x37, 0x02, data.id, ...value]);
+		}
+		
+		function ResetParam(obj)
+		{
+			const root = obj.closest('.param-obj');
+			const field = root.querySelector('.param_field input');
+			const data = JSON.parse(root.dataset.data);
+
+			field.value = data.default;
+		}
+		
+		RenderUI(BLOCK_TYPE);
+		
+		const socket = new WebSocket('ws://localhost:8080');
+		socket.onopen = function(event)
+		{
+			console.log("WS: Соединение установлено:", event.target.url);
+		};
+		socket.onmessage = (message) => 
+		{
+			let msg;
+			try {
+				msg = JSON.parse(message.data);
+			} catch (err) {
+				console.error('Ошибка JSON:', err);
+				return;
+			}
+			
+			console.log(msg);
+
+			if(msg.cmd == "Raw")
+			{
+				const block_id = msg.data.id;				// ID BlockCFG у блока
+				const fId = msg.data.data[0];				// fId CAN протокола, 0x37
+				const cmd = msg.data.data[1];				// Команда объекта BlockCFG
+				const id = msg.data.data[2];				// Id параметра объекта BlockCFG
+				const data = msg.data.data.slice(3);		// Data параметра объекта BlockCFG
+
+				// Пришёл ответ на ID, который сейчас открыт у нас.
+				if(block_id == CFG_ID)
+				{
+					// Пришёл пакет с fId BlockCFG
+					if(fId == 0x37)
+					{
+						const root_obj = document.querySelector('.param-obj[data-id="' + id + '"]');
+						if(root_obj == null) return;
+						
+						const root_data = JSON.parse(root_obj.dataset.data);
+						const input_obj = root_obj.querySelector('.param_field input');
+
+						switch(cmd)
+						{
+							// Получен ответ на запрос параметра
+							case 0x01:
+							{
+								const value = readNumberFromArray(data, 0, root_data.type, true);
+								input_obj.value = value;
+								input_obj.disabled = false;
+
+								break;
+							}
+
+							// Получен ответ на запись параметра
+							case 0x02:
+							{
+								input_obj.disabled = false;
+								
+								break;
+							}
+							
+							// Получен ответ на сохранение и перезагрузку
+							case 0x03:
+							{
+								break;
+							}
+
+							// Получен ответ c ошибкой
+							default:
+							{
+								console.log("Ошибка настроек: ", msg);
+								
+								break;
+							}
+						}
+					}
+				}
+			}
+		};
+		
+		function SendRaw(type, id, bytes)
+		{
+			if(!Number.isInteger(type))
+				throw new TypeError('SendRaw: type param must be an Int');
+			if(!Number.isInteger(id))
+				throw new TypeError('SendRaw: id param must be an Int');
+			if(!Array.isArray(bytes))
+				throw new TypeError('SendRaw: bytes param must be an Array');
+			
+			const packet = 
+			{
+				cmd: "Raw",
+				type: type,
+				id: id,
+				bytes: bytes
+			};
+			console.log( JSON.stringify(packet) );
+			socket.send( JSON.stringify(packet) );
+		}
+	
+	</script>
+
+</body>
+</html>
