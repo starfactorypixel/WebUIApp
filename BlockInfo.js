@@ -18,6 +18,18 @@ function parsePacket(byteArray) {
     const sw_ver = view.getUint8(offset++);
     const can_ver = view.getUint8(offset++);
 
+    const sn = [];
+    for (let i = 0; i < 8; i++)
+	{
+        sn.push(view.getUint8(offset++));
+    }
+
+    const features = [];
+    for (let i = 0; i < 7; i++)
+	{
+        features.push(view.getUint8(offset++));
+    }
+
     const uptime = view.getUint32(offset, true);
     offset += 4;
 
@@ -30,11 +42,7 @@ function parsePacket(byteArray) {
     const temperature = view.getInt8(offset++);
     const error_flags = view.getUint8(offset++);
 
-    const sn = [];
 
-    for (let i = 0; i < 8; i++) {
-        sn.push(view.getUint8(offset++));
-    }
 
     return {
         baseID,
@@ -42,12 +50,13 @@ function parsePacket(byteArray) {
         hw_ver,
         sw_ver,
         can_ver,
+		sn: sn.map(v => v.toString(16).padStart(2, "0")).join(":"),
+		features: features.map(v => v.toString(16).padStart(2, "0")).join(":"),
         uptime,
         voltage,
         current,
         temperature,
         error_flags,
-        sn: sn.map(v => v.toString(16).padStart(2, "0")).join(":")
     };
 }
 
