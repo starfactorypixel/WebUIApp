@@ -90,9 +90,9 @@
 			const data = await response.json();
 
 			let block_json_data = null;
-			data.forEach((block) => 
+			data.blocks.forEach((block) => 
 			{
-				if(block.board_type == block_type)
+				if(block.type == block_type)
 				{
 					block_json_data = block;
 					return;
