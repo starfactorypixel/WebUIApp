@@ -92,8 +92,10 @@ function createOrUpdateBlock(info) {
         blocksMap.set(info.baseID, block);
     }
 
+	const item = findInJson("Blocks.json", "type", info.hw_type);
+
     block.querySelector(".baseID").textContent = int2hex(info.baseID, 4);
-    block.querySelector(".hw_type").textContent = info.hw_type;
+    block.querySelector(".hw_type").textContent = info.hw_type + ' (' + item.name + ')';
     block.querySelector(".hw_ver").textContent = info.hw_ver;
     block.querySelector(".sw_ver").textContent = info.sw_ver;
     block.querySelector(".can_ver").textContent = info.can_ver;

@@ -173,3 +173,28 @@ function writeNumberToArray(value, type, littleEndian = false)
 
 	return Array.from(new Uint8Array(buffer));
 }
+
+
+const _jsonCache = new Map();
+async function loadJson(file)
+{
+	if (_jsonCache.has(file))
+		return;
+
+	const response = await fetch(file);
+
+	if (!response.ok)
+		throw new Error(`Failed to load JSON: ${response.status}`);
+
+	_jsonCache.set(file, await response.json());
+}
+
+function findInJson(file, key, value)
+{
+	const data = _jsonCache.get(file);
+
+	if (data === undefined)
+		return undefined;
+
+	return data.find(item => item[key] === value);
+}

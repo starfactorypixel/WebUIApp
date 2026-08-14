@@ -114,7 +114,7 @@ customElements.define("ui-element", UiElement);
 
 
 
-
+	loadJson("Blocks.json");
 
 
 
@@ -367,8 +367,8 @@ function SetUIValue(id, rx_data = [])
 			// 
 			case 'stream':
 			{
-				const rx_num = readNumberFromArray(rx_data, 1, config.type, true);		// Потом переделать num на uint8
-				const rx_val_raw = readNumberFromArray(rx_data, 3, config.type, true);
+				const rx_num = readNumberFromArray(rx_data, 1, 'uint8', true);
+				const rx_val_raw = readNumberFromArray(rx_data, 2, config.type, true);
 				//rx_val_raw += getRandomInt(3200, 4200);
 				const rx_value = rx_val_raw / config.scale;
 				const template_data = {number: rx_num, value: rx_value, value_raw: rx_val_raw};
