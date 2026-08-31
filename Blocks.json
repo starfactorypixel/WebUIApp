@@ -1,47 +1,42 @@
 [
   {
     "type": 1,
-    "name": "BattaryECU",
+    "name": "Battary ECU",
     "desc": "Блок опроса и взаимодействия с силовой АКБ"
   },
   {
     "type": 2,
-    "name": "MotorECU",
+    "name": "Motor ECU",
     "desc": "Блок опроса и взаимодействия с моторами"
   },
   {
     "type": 3,
-    "name": "ButtonECU",
+    "name": "Button ECU",
     "desc": "Блок кнопок"
   },
   {
     "type": 4,
-    "name": "IOFrameECU",
+    "name": "IOFrame ECU",
     "desc": "Блок управления подвеской"
   },
   {
     "type": 5,
-    "name": "LightFECU",
-    "desc": "Блок управления передним светом"
-  },
-  {
-    "type": 6,
-    "name": "LightBECU",
-    "desc": "Блок управления задним светом"
+    "name": "Light ECU",
+    "desc": "Блок управления светом"
   },
   {
     "type": 7,
-    "name": "SteeringRackECU",
+    "name": "SteeringRack ECU",
     "desc": "Блок управления рулевыми рейками"
   },
   {
     "type": 8,
-    "name": "DoorECU",
+    "name": "Door ECU",
     "desc": "Блок электроники дверей"
   },
   {
     "type": 30,
-    "name": "IOECU",
+    "name": "IO ECU",
     "desc": "Блок универсальный"
   }
 ]

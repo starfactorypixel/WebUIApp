@@ -1,7 +1,7 @@
 {
   "serial": {
     "port": "COM8",
-    "speed": 115200
+    "speed": 921600
   },
   "ws": {
     "port": 8080

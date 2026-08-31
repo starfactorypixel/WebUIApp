@@ -242,7 +242,8 @@ obj_serial.on('open', () => {
 
 async function OnRX(type, id, rxData)
 {
-	console.log("RX: ", type.toString(16).padStart(2, '0'), id.toString(16).padStart(4, '0'), [].map.call(rxData, x => x.toString(16).padStart(2, '0')).join(' '));
+	// Логи тормозят сервер
+	//console.log("RX: ", type.toString(16).padStart(2, '0'), id.toString(16).padStart(4, '0'), [].map.call(rxData, x => x.toString(16).padStart(2, '0')).join(' '));
 
 	// Пинг
 	if(type == 0x10 && id == 0xFFFF)
