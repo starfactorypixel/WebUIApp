@@ -420,6 +420,18 @@
         {"name": "reg", "type": "reg"},
         {"name": "reg", "type": "reg"}
       ]
+    },
+    {
+      "code"  : "0xA5",
+      "length": 7,
+      "name"  : "StateReadReg",
+      "format": [
+        {"name": "reg", "type": "reg"},
+        {"name": "reg", "type": "reg"},
+        {"name": "db_id", "type": "uint16", "print": "hex:4"},
+        {"name": "type", "type": "enum", "enum": "dataType"},
+        {"name": "offset", "type": "uint8"}
+      ]
     }
   ],
   "registers": {
