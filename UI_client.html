@@ -29,7 +29,14 @@
 	{
 		font-weight: bold;
 	}
-	
+
+	.meter-el meter,
+	.meter-el div
+	{
+		width: 100%;
+		text-align: center;
+	}
+
 	.device-block
 	{
 		display: inline-block;
@@ -92,6 +99,11 @@
 	<ui-element type="value" id="0x0171" config='{"name":"In6: ${value:%1.3f}V", "type": "uint16", "scale": 1000}'></ui-element>
 	<ui-element type="value" id="0x0172" config='{"name":"In7: ${value:%1.3f}V", "type": "uint16", "scale": 1000}'></ui-element>
 	<ui-element type="value" id="0x0173" config='{"name":"In8: ${value:%1.3f}V", "type": "uint16", "scale": 1000}'></ui-element>
+	<br>
+
+	<ui-element type="meter" id="0x0113" config='{"name":"Motor RR voltage", "format": "${value:%2.1f}V", "type": "uint16", "scale": 10,   "min":"50.0", "max":"99.9", "low":"64.5", "high":"74.0", "optimum":"75.0"}'></ui-element>
+
+
 	<br>
 
 	<ui-element type="stream" id="0x0190" config='{"name":"Batt 1 cells", "format": "${number:%02d}: ${value:%1.3f}V", "type": "uint16", "scale": 1000}'></ui-element>
@@ -337,6 +349,25 @@ document.querySelectorAll('ui-element').forEach((obj, index) =>
 			
 			break;
 		}
+
+		case 'meter':
+		{
+			const el_root = document.createElement('div');
+			el_root.classList.add('meter-el');
+			el_root.innerHTML = `
+				<div class="title">${obj_cfg.name}</div>
+				<div class="obj">
+					<meter min="${obj_cfg.min}" max="${obj_cfg.max}" low="${obj_cfg.low}" high="${obj_cfg.high}" optimum="${obj_cfg.optimum}" value="${obj_cfg.min}"></meter>
+					<div>...</div>
+				</div>
+			`;
+			
+			obj.appendChild(el_root);
+			
+			Pixel_Subscribe([obj_id]);
+			
+			break;
+		}
 	}
 });
 
@@ -413,6 +444,18 @@ function SetUIValue(id, rx_data = [])
 				
 				radio.checked = true;
 				
+				break;
+			}
+
+			//
+			case 'meter':
+			{
+				const meter = obj.querySelector('.obj meter');
+				meter.value = data.value;
+				meter.innerHTML = `[${config.min}__${data.value}__${config.max}]`;
+				const span = meter.nextElementSibling;
+				span.innerHTML = sprintfNamed(config.format, data);
+
 				break;
 			}
 		}
