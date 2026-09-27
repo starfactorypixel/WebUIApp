@@ -1,7 +1,7 @@
 import { UIWidget } from './base.js';
 import { readNumberFromArray } from '../parse.js';
 import { sprintfNamed } from '../format.js';
-import { WSSubscribe } from '../ws.js';
+import { AddSubscribe } from '../ws.js';
 import { SimpleChart } from '../simple-chart.js'
 
 export class ValueWidget extends UIWidget
@@ -37,7 +37,7 @@ export class ValueWidget extends UIWidget
 			});
 		}
 
-		WSSubscribe([this.id]);
+		AddSubscribe(this.id);
 	}
 
 	Update(rx_data)
@@ -47,7 +47,7 @@ export class ValueWidget extends UIWidget
 		let value = value_raw / this.config.scale;
 		let data = { value: value, value_raw: value_raw };
 
-		//if (value_raw == 0) return;
+		if (value_raw == 0) return;
 
 		this.refs.value.innerHTML = sprintfNamed(this.config.format, data);
 		if (this.refs.chart)

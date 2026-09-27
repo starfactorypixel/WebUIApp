@@ -1,7 +1,7 @@
 import { UIWidget } from './base.js';
 import { readNumberFromArray } from '../parse.js';
 import { sprintfNamed } from '../format.js';
-import { WSSubscribe } from '../ws.js';
+import { AddSubscribe } from '../ws.js';
 
 export class MeterWidget extends UIWidget
 {
@@ -21,7 +21,7 @@ export class MeterWidget extends UIWidget
 		this.refs.meter = this.element.querySelector('.ui-meter_content meter');
 		this.refs.value = this.element.querySelector('.ui-meter_value');
 
-		WSSubscribe([this.id]);
+		AddSubscribe(this.id);
 	}
 
 	Update(rx_data)
@@ -29,6 +29,8 @@ export class MeterWidget extends UIWidget
 		let value_raw = readNumberFromArray(rx_data, 1, this.config.type, true);
 		let value = value_raw / this.config.scale;
 		let data = { value: value, value_raw: value_raw };
+
+		if (value_raw == 0) return;
 
 		this.refs.meter.value = data.value;
 		this.refs.meter.innerHTML = `[${this.config.min}__${data.value}__${this.config.max}]`;

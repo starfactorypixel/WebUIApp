@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>WebUI demo</title>
+<link rel="stylesheet" href="css/style.css">
+ <style>
+	.params {
+		display: grid;
+		width: 308px;
+	}
+	
+	.params input {
+		width: 64px;
+	}
+
+	ui-element
+	{
+		/*display: inline-block;*/
+		display: inline-flex;
+		border: 1px solid black;
+		padding: 6px 12px;
+	}
+	ui-element .ui_title
+	{
+		font-weight: bold;
+	}
+
+	.ui-meter_content meter,
+	.ui-meter_content div
+	{
+		width: 100%;
+		text-align: center;
+	}
+
+	.device-block
+	{
+		display: inline-block;
+		background-color: aqua;
+		margin: 10px;
+		padding: 10px;
+		border: 1px solid #aaa;
+		border-radius: 6px;
+		width: 220px;
+	}
+
+	.ui-stream_content
+	{
+		display: grid;
+		grid-auto-flow: column;
+		grid-template-rows: repeat(8, auto);
+	}
+	.ui-stream_element
+	{
+		padding: 6px;
+		background-color: aquamarine;
+		margin: 6px;
+		border: 1px black solid;
+		text-align: center;
+	}
+
+	.ui-radio_content label
+	{
+		display: flex;
+		padding: 6px;
+		background-color: bisque;
+	}
+
+	.ui_chart
+	{
+		border: 1px solid black;
+		width: 100%;
+		height: 64px;
+	}
+
+	.ui-value
+	{
+		width: 150px;
+	}
+  </style>
+</head>
+<body>
+
+<div class="ui-elements">
+
+
+	<ui-element type="value" id="0x010E" config='{"name":"RPM перёд L","format":"${value:%04d}","type":"uint16","scale":1,"chart":{"count":64,"mode":"fill"}}'></ui-element>
+	<ui-element type="value" id="0x010F" config='{"name":"RPM перёд R","format":"${value:%04d}","type":"uint16","scale":1,"chart":{"count":64,"mode":"fill"}}'></ui-element>
+	<ui-element type="value" id="0x0110" config='{"name":"Скорость перёд L","format":"${value:%02d}","type":"uint16","scale":10,"chart":{"count":64,"mode":"line"}}'></ui-element>
+	<ui-element type="value" id="0x0111" config='{"name":"Скорость перёд R","format":"${value:%02d}","type":"uint16","scale":10,"chart":{"count":64,"mode":"line"}}'></ui-element>
+	<ui-element type="value" id="0x0112" config='{"name":"Напр перёд L","format":"${value:%02.1f}V","type":"uint16","scale":10,"chart":{"count":64,"mode":"line"}}'></ui-element>
+	<ui-element type="value" id="0x0113" config='{"name":"Напр перёд R","format":"${value:%02.1f}V","type":"uint16","scale":10,"chart":{"count":64,"mode":"line"}}'></ui-element>
+	<ui-element type="value" id="0x0114" config='{"name":"Ток перёд L","format":"${value:%03.1f}A","type":"int16","scale":10,"chart":{"count":64,"mode":"line"}}'></ui-element>
+	<ui-element type="value" id="0x0115" config='{"name":"Ток перёд R","format":"${value:%03.1f}A","type":"int16","scale":10,"chart":{"count":64,"mode":"line"}}'></ui-element>
+	<ui-element type="value" id="0x0116" config='{"name":"Мощн перёд L","format":"${value:%04d}W","type":"int16","scale":1,"chart":{"count":64,"mode":"line"}}'></ui-element>
+	<ui-element type="value" id="0x0117" config='{"name":"Мощн перёд R","format":"${value:%04d}W","type":"int16","scale":1,"chart":{"count":64,"mode":"line"}}'></ui-element>
+	<ui-element type="value" id="0x011A" config='{"name":"Tm перёд L","format":"${value:%02d}C","type":"int16","scale":1,"chart":{"count":64,"mode":"line"}}'></ui-element>
+	<ui-element type="value" id="0x011B" config='{"name":"Tm перёд R","format":"${value:%02d}C","type":"int16","scale":1,"chart":{"count":64,"mode":"line"}}'></ui-element>
+	<ui-element type="value" id="0x011C" config='{"name":"Tc перёд L","format":"${value:%02d}C","type":"int16","scale":1,"chart":{"count":64,"mode":"line"}}'></ui-element>
+	<ui-element type="value" id="0x011D" config='{"name":"Tc перёд R","format":"${value:%02d}C","type":"int16","scale":1,"chart":{"count":64,"mode":"line"}}'></ui-element>
+	
+	<br>
+
+	<ui-element type="value" id="0x0184" config='{"name":"АКБ 1","format":"${value:%03.1f}A","type":"int16","scale":10,"chart":{"count":64,"mode":"fill"}}'></ui-element>
+	<ui-element type="value" id="0x0185" config='{"name":"АКБ 2","format":"${value:%03.1f}A","type":"int16","scale":10,"chart":{"count":64,"mode":"fill"}}'></ui-element>
+	
+	<br>
+
+	<ui-element type="meter" id="0x0186" config='{"name":"АКБ 1 %", "format": "${value:%02f}%", "type": "uint8", "scale": 1,   "min":"0.0", "max":"100.0", "low":"20.0", "high":"50.0", "optimum":"75.0"}'></ui-element>
+	<ui-element type="meter" id="0x0187" config='{"name":"АКБ 2 %", "format": "${value:%02f}%", "type": "uint8", "scale": 1,   "min":"0.0", "max":"100.0", "low":"20.0", "high":"50.0", "optimum":"75.0"}'></ui-element>
+	<ui-element type="value" id="0x0188" config='{"name":"АКБ 1 Мощн","format":"${value:%04d}W","type":"int16","scale":1,"chart":{"count":64,"mode":"line"}}'></ui-element>
+	<ui-element type="value" id="0x0189" config='{"name":"АКБ 2 Мощн","format":"${value:%04d}W","type":"int16","scale":1,"chart":{"count":64,"mode":"line"}}'></ui-element>
+
+
+
+
+
+
+
+
+
+
+
+</div>
+
+
+<!-- ВАЖНО: type="module" — тогда app.js и все его import подтягиваются сами,
+     порядок и наличие отдельных <script> для каждого класса не нужны -->
+<script type="module" src="js/app-client.js"></script>
+
+</body>
+</html>

@@ -75,7 +75,24 @@ export function WSSendRaw(type, id, bytes)
 
 
 
+let subscribe_idx = [];
 
+export function AddSubscribe(id)
+{
+	subscribe_idx.push(id);
+}
+
+export function SendSubscribe()
+{
+    const CHUNK_SIZE = 32;
+    
+    for (let i = 0; i < subscribe_idx.length; i += CHUNK_SIZE) {
+        const chunk = subscribe_idx.slice(i, i + CHUNK_SIZE);
+        WSSubscribe(chunk);
+    }
+
+	subscribe_idx = [];
+}
 
 
 export function WSSubscribe(params)

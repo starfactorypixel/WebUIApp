@@ -1,7 +1,7 @@
 import { UIWidget } from './base.js';
 import { readNumberFromArray } from '../parse.js';
 import { sprintfNamed } from '../format.js';
-import { WSSendRaw, WSSubscribe } from '../ws.js';
+import { WSSendRaw, AddSubscribe } from '../ws.js';
 
 export class StreamWidget extends UIWidget
 {
@@ -27,7 +27,7 @@ export class StreamWidget extends UIWidget
 			WSSendRaw(0x15, this.id, [0x11]);
 		});
 
-		WSSubscribe([this.id]);
+		AddSubscribe(this.id);
 	}
 
 	Update(rx_data)

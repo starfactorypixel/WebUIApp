@@ -1,7 +1,7 @@
 import { UIWidget } from './base.js';
 import { readNumberFromArray } from '../parse.js';
 import { sprintfNamed } from '../format.js';
-import { WSSendRaw, WSSubscribe } from '../ws.js';
+import { WSSendRaw, AddSubscribe } from '../ws.js';
 
 export class ButtonWidget extends UIWidget
 {
@@ -34,7 +34,7 @@ export class ButtonWidget extends UIWidget
 			}
 		}
 		
-		WSSubscribe([this.id]);
+		AddSubscribe(this.id);
 	}
 
 	Update(rx_data)

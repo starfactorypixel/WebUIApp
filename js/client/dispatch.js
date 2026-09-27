@@ -1,4 +1,5 @@
 import { getWidgetClass } from './registry.js';
+import { SendSubscribe } from '../ws.js';
 
 // id -> [UIWidget, ...] (может быть несколько виджетов с одним id)
 const widgetsById = new Map();
@@ -21,6 +22,8 @@ export function initWidgets(root = document) {
     if (!widgetsById.has(id)) widgetsById.set(id, []);
     widgetsById.get(id).push(widget);
   });
+
+  SendSubscribe();
 
   console.log(`Инициализировано ${document.querySelectorAll('ui-element').length} виджетов`);
 }

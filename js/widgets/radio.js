@@ -1,6 +1,6 @@
 import { UIWidget } from './base.js';
 import { readNumberFromArray, writeNumberToArray } from '../parse.js';
-import { WSSendRaw, WSSubscribe } from '../ws.js';
+import { WSSendRaw, AddSubscribe } from '../ws.js';
 
 export class RadioWidget extends UIWidget
 {
@@ -19,7 +19,7 @@ export class RadioWidget extends UIWidget
 
 		this.buildOptions();
 
-		WSSubscribe([this.id]);
+		AddSubscribe(this.id);
 	}
 
 	buildOptions()
