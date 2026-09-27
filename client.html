@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>WebUI demo</title>
+<link rel="stylesheet" href="css/style.css">
+ <style>
+	.params {
+		display: grid;
+		width: 308px;
+	}
+	
+	.params input {
+		width: 64px;
+	}
+
+	ui-element
+	{
+		/*display: inline-block;*/
+		display: inline-flex;
+		border: 1px solid black;
+		padding: 6px 12px;
+	}
+	ui-element .ui_title
+	{
+		font-weight: bold;
+	}
+
+	.ui-meter_content meter,
+	.ui-meter_content div
+	{
+		width: 100%;
+		text-align: center;
+	}
+
+	.device-block
+	{
+		display: inline-block;
+		background-color: aqua;
+		margin: 10px;
+		padding: 10px;
+		border: 1px solid #aaa;
+		border-radius: 6px;
+		width: 220px;
+	}
+
+	.ui-stream_content
+	{
+		display: grid;
+		grid-auto-flow: column;
+		grid-template-rows: repeat(8, auto);
+	}
+	.ui-stream_element
+	{
+		padding: 6px;
+		background-color: aquamarine;
+		margin: 6px;
+		border: 1px black solid;
+		text-align: center;
+	}
+
+	.ui-radio_content label
+	{
+		display: flex;
+		padding: 6px;
+		background-color: bisque;
+	}
+
+	.ui_chart
+	{
+		border: 1px solid black;
+		width: 100%;
+		height: 64px;
+	}
+
+	.ui-value
+	{
+		width: 150px;
+	}
+  </style>
+</head>
+<body>
+
+<div class="ui-elements">
+	<ui-element type="button" id="0x0164" config='{"name":"IOut 1","format":"[${value}]","type":"uint8","scale":1}'></ui-element>
+	<ui-element type="button" id="0x0165" config='{"name":"IOut 2","format":"[${value}]","type":"uint8","scale":1}'></ui-element>
+	<ui-element type="button" id="0x0166" config='{"name":"IOut 3","format":"[${value}]","type":"uint8","scale":1}'></ui-element>
+	<ui-element type="button" id="0x0167" config='{"name":"IOut 4","format":"${icon1}[${value}]","type":"uint8","scale":1}'></ui-element>
+	<ui-element type="button" id="0x0168" config='{"name":"IOut 5","format":"${icon1}[${value}]","type":"uint8","scale":1}'></ui-element>
+	<ui-element type="button" id="0x0169" config='{"name":"IOut 6","format":"${icon1}[${txt}]","type":"uint8","scale":1,"txt":"255:ON,0:OFF"}'></ui-element>
+	<ui-element type="button" id="0x016A" config='{"name":"IOut 7","format":"[${value}]","type":"uint8","scale":1}'></ui-element>
+	<ui-element type="button" id="0x016B" config='{"name":"IOut HI","format":"[${value}]","type":"uint8","scale":1}'></ui-element>
+	<br>
+	<ui-element type="value" id="0x0110" config='{"name":"Скорость","format":"Speed: ${value:%02d}Kmh","type":"uint16","scale":10,"chart":{"count":64,"mode":"fill"}}'></ui-element>
+	<ui-element type="value" id="0x0112" config='{"name":"Напряжение","format":"Voltage: ${value:%04.1f}V","type":"uint16","scale":10}'></ui-element>
+	<ui-element type="value" id="0x0114" config='{"name":"Ток","format":"Current: ${value:%+5.1f}A","type":"int16","scale":10,"chart":{"count":32,"mode":"line"}}'></ui-element>
+	<ui-element type="value" id="0x0116" config='{"name":"Мощность","format":"Power: ${value:%+5d}W","type":"int16","scale":1}'></ui-element>
+	<br>
+	<ui-element type="value" id="0x016C" config='{"name":"IO in 1","format":"In1: ${value:%1.3f}V","type":"uint16","scale":1000}'></ui-element>
+	<ui-element type="value" id="0x016D" config='{"name":"IO in 2","format":"In2: ${value:%1.3f}V","type":"uint16","scale":1000}'></ui-element>
+	<ui-element type="value" id="0x016E" config='{"name":"IO in 3","format":"In3: ${value:%1.3f}V","type":"uint16","scale":1000}'></ui-element>
+	<ui-element type="value" id="0x016F" config='{"name":"","format":"In4: ${value:%1.3f}V","type":"uint16","scale":1000}'></ui-element>
+	<ui-element type="value" id="0x0170" config='{"name":"IO in 5","format":"In5: ${value:%1.3f}V","type":"uint16","scale":1000}'></ui-element>
+	<ui-element type="value" id="0x0171" config='{"name":"IO in 6","format":"In6: ${value:%1.3f}V","type":"uint16","scale":1000}'></ui-element>
+	<ui-element type="value" id="0x0172" config='{"name":"IO in 7","format":"In7: ${value:%1.3f}V","type":"uint16","scale":1000}'></ui-element>
+	<ui-element type="value" id="0x0173" config='{"name":"IO in 8","format":"In8: ${value:%1.3f}V","type":"uint16","scale":1000}'></ui-element>
+	<br>
+
+	<ui-element type="meter" id="0x0113" config='{"name":"Motor RR voltage", "format": "${value:%2.1f}V", "type": "uint16", "scale": 10,   "min":"60.0", "max":"84.0", "low":"73.0", "high":"74.0", "optimum":"75.0"}'></ui-element>
+
+
+	<br>
+
+	<ui-element type="stream" id="0x0190" config='{"name":"Batt 1 cells", "format": "${number:%02d}: ${value:%1.3f}V", "type": "uint16", "scale": 1000}'></ui-element>
+
+	<br>
+
+	<ui-element type="radio" id="0x0106" config='{"name":"КПП 1", "radios": "0:N,1:F,2:R,4:L,8:B", "readonly": false, "type": "uint8"}'></ui-element>
+	
+</div>
+
+
+<!-- ВАЖНО: type="module" — тогда app.js и все его import подтягиваются сами,
+     порядок и наличие отдельных <script> для каждого класса не нужны -->
+<script type="module" src="js/app-client.js"></script>
+
+</body>
+</html>
