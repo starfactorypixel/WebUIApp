@@ -1,5 +1,9 @@
 @ECHO OFF
 
-node server.js
+ECHO.
+ECHO ^> Check updates...
+call npm install serialport ws
 
-PAUSE
+ECHO.
+ECHO ^> Run server...
+node server.js
