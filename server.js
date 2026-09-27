@@ -391,6 +391,76 @@ function CRC16_MCRF4XX(byteArr, start, length)
 
 
 
+
+
+
+
+
+
+
+
+///////////////////////////////////////////////////////////////////////////////////////////
+
+function createTransportPacket(payload_len, payload) {
+    const HEAD = ['P', 'X'], VERSION = 0x02, DIRECTION = 0;
+    if (!Number.isInteger(payload_len) || payload_len < 0 || payload_len > 104 || !payload || payload.length !== payload_len)
+        throw new Error("Invalid payload");
+
+    const data = new Uint8Array(8 + payload_len);
+    data[0] = HEAD[0];
+    data[1] = HEAD[1];
+    data[2] = VERSION & 0x0F;
+    data[3] = (DIRECTION & 1) << 7;
+    data[6] = payload_len & 0xFF;
+    data[7] = payload_len >> 8;
+    data.set(payload, 8);
+
+    let crc = 0;
+    for (const byte of data) {
+        crc ^= byte << 8;
+        for (let i = 0; i < 8; i++)
+            crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) & 0xFFFF : (crc << 1) & 0xFFFF;
+    }
+
+    data[4] = crc & 0xFF;
+    data[5] = crc >> 8;
+
+    return { data: Array.from(data), length: data.length };
+}
+
+function parseTransportPacket(data) {
+    const HEAD = ['P', 'X'], VERSION = 0x02, DIRECTION = 1;
+    data = new Uint8Array(data);
+    if (data.length < 8) throw new Error("Invalid packet length");
+    if (data[0] !== HEAD[0] || data[1] !== HEAD[1]) throw new Error("Invalid head");
+    if ((data[2] & 0x0F) !== VERSION || (data[2] & 0xF0) !== 0) throw new Error("Invalid version/flags");
+    if ((data[3] & 0x7F) !== 0 || ((data[3] >> 7) & 1) !== DIRECTION) throw new Error("Invalid direction/flags");
+
+    const crc = data[4] | (data[5] << 8);
+    const payload_len = data[6] | (data[7] << 8);
+    if (payload_len > 104 || data.length !== 8 + payload_len) throw new Error("Invalid payload length");
+
+    const tmp = new Uint8Array(data);
+    tmp[4] = tmp[5] = 0;
+
+    let calc = 0;
+    for (const byte of tmp) {
+        calc ^= byte << 8;
+        for (let i = 0; i < 8; i++)
+            calc = (calc & 0x8000) ? ((calc << 1) ^ 0x1021) & 0xFFFF : (calc << 1) & 0xFFFF;
+    }
+
+    if (calc !== crc) throw new Error("Invalid CRC");
+
+    return { payload: Array.from(data.slice(8)), payload_len };
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
 function SendSubscribe(ids)
 {
 	if(ids.length == 0) return;
