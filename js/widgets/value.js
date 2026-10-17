@@ -98,7 +98,7 @@ export class ValueWidget extends UIWidget
 			const cmp = EXPR_OPS[op];
 			if(!cmp)
 			{
-				console.warn('expr: неизвестный оператор', op, 'в', this.id);
+				console.warn(`[${this.config.name}] expr: неизвестный оператор "${op}"`);
 				continue;
 			}
 			compiled.push({ test: v => cmp(v, limit), out });

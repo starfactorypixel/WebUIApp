@@ -11,6 +11,8 @@
 //
 // Модуль ничего не импортирует, поэтому циклических зависимостей больше нет.
 
+import { log } from './log.js';
+
 const RECONNECT_MIN_MS = 500;
 const RECONNECT_MAX_MS = 10000;
 
@@ -56,7 +58,7 @@ function connect()
 	}
 	catch (err)
 	{
-		console.error('WS: не удалось создать соединение:', err);
+		log.error('[WS] Не удалось создать соединение', err);
 		scheduleReconnect();
 		return;
 	}
@@ -67,7 +69,7 @@ function connect()
 	{
 		if(socket !== ws) return;
 		opened = true;
-		console.log('WS: соединение установлено:', url);
+		log.info(`[WS] Соединение установлено: ${url}`);
 		retryDelay = RECONNECT_MIN_MS;
 		setOnline(true);
 		WSEvents.dispatchEvent(new Event('open'));
@@ -80,7 +82,7 @@ function connect()
 		setOnline(false);
 		if(opened)
 		{
-			console.log(`WS: соединение потеряно (code ${event.code})`);
+			log.warn(`[WS] Соединение потеряно (code ${event.code}), переподключение…`);
 			WSEvents.dispatchEvent(new Event('close'));
 		}
 		scheduleReconnect();
@@ -97,7 +99,7 @@ function scheduleReconnect()
 	if(retryTimer !== null) return;
 	const delay = retryDelay * (0.8 + Math.random() * 0.4); // небольшой разброс
 	retryDelay = Math.min(retryDelay * 2, RECONNECT_MAX_MS);
-	console.log(`WS: переподключение через ${Math.round(delay)} мс`);
+	log.info(`[WS] Переподключение через ${(delay / 1000).toFixed(1)} с`);
 	retryTimer = setTimeout(connect, delay);
 }
 
@@ -124,7 +126,7 @@ function onMessage(message)
 	}
 	catch (err)
 	{
-		console.error('WS: ошибка JSON:', err);
+		log.error('[WS] Ошибка JSON во входящем сообщении', err);
 		return;
 	}
 
@@ -163,7 +165,7 @@ export function WSSendRaw(type, id, bytes)
 		throw new TypeError('SendRaw: bytes param must be an Array');
 
 	const ok = WSSend({ cmd: 'Raw', type, id, bytes });
-	if(!ok) console.warn(`WS: нет соединения, команда для 0x${id.toString(16)} не отправлена`);
+	if(!ok) log.warn(`[WS] Нет соединения, команда для obj 0x${id.toString(16).toUpperCase().padStart(4, '0')} не отправлена`);
 	return ok;
 }
 

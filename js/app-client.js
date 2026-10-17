@@ -1,6 +1,7 @@
 import { registerWidget } from './client/registry.js';
 import { initWidgets, deinitWidgets } from './client/dispatch.js';
-import { WSStart, WSEvents } from './ws.js';
+import { WSStart } from './ws.js';
+import { log } from './log.js';
 import './client/subscriptions.js'; // маршрутизация пакетов и повтор подписок после переподключения
 import { Tabs } from './tabs.js';
 import { Control } from './client/control.js';
@@ -20,43 +21,27 @@ Control.timeout = 2000;
 //    Чтобы добавить новый тип — создать файл widgets/xxx.js и добавить сюда одну строку.
 [ButtonWidget, ValueWidget, MeterWidget, StreamWidget, RadioWidget, RangeWidget].forEach(registerWidget);
 
-// 2. Лог на странице
-const logEl = document.getElementById('log');
-const LOG_MAX_LINES = 200;
-const log = msg =>
-{
-	if(!logEl) return;
-	const line = document.createElement('div');
-	line.textContent = msg;
-	logEl.appendChild(line);
-	while(logEl.childElementCount > LOG_MAX_LINES) logEl.firstElementChild.remove();
-	logEl.scrollTop = logEl.scrollHeight;
-};
-
-WSEvents.addEventListener('open', () => log('[WS] Соединение установлено'));
-WSEvents.addEventListener('close', () => log('[WS] Соединение потеряно, переподключение…'));
-
-// 3. Вкладки: виджеты живут только на открытой вкладке.
+// 2. Вкладки: виджеты живут только на открытой вкладке.
 const root = document.getElementById('myTabs');
 
 // Подписываемся ДО создания, чтобы поймать открытие первой вкладки
 root.addEventListener('tab:close', e =>
 {
-	log(`[Закрытие] "${e.detail.title}"`);
+	log.info(`[Вкладки] Закрытие "${e.detail.title}"`);
 	deinitWidgets(e.detail.panel);
 });
 
 root.addEventListener('tab:open', e =>
 {
-	log(`[Открытие] "${e.detail.title}"`);
+	log.info(`[Вкладки] Открытие "${e.detail.title}"`);
 	initWidgets(e.detail.panel);
 });
 
 const tabs = new Tabs(root, { active: 0 });
 
-// 4. Виджеты вне вкладок (если есть) — живут всё время.
+// 3. Виджеты вне вкладок (если есть) — живут всё время.
 initWidgets(document, el => !el.closest('[data-tab-title]'));
 
-// 5. Соединение. Порядок больше не важен: подписки, сделанные до 'open',
+// 4. Соединение. Порядок больше не важен: подписки, сделанные до 'open',
 //    отправятся сами, как только сокет откроется, и повторятся после обрыва.
 WSStart(WS_URL);

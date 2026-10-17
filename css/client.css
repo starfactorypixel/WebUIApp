@@ -173,3 +173,11 @@ body {
 	overflow: auto;
 	border-radius: 6px;
 }
+
+#log .log_warn {
+	color: #ffd54f;
+}
+
+#log .log_error {
+	color: #ff6b6b;
+}

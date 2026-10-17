@@ -15,7 +15,6 @@ const widgets = new WeakMap(); // <ui-element> -> UIWidget
  */
 export function initWidgets(root = document, filter = null)
 {
-	let count = 0;
 	for (const el of root.querySelectorAll('ui-element'))
 	{
 		if(widgets.has(el)) continue;
@@ -25,7 +24,7 @@ export function initWidgets(root = document, filter = null)
 		const Cls = getWidgetClass(type);
 		if(!Cls)
 		{
-			console.warn('Неизвестный тип виджета:', type, el);
+			console.warn(`[Виджеты] Неизвестный тип виджета "${type}"`, el);
 			continue;
 		}
 
@@ -34,13 +33,13 @@ export function initWidgets(root = document, filter = null)
 		let ids = objAttr.split(',').map(s => parseInt(s.trim(), 16));
 		if(ids.length === 0 || ids.some(Number.isNaN))
 		{
-			console.warn('Некорректный атрибут obj виджета:', objAttr, el);
+			console.warn(`[Виджеты] Некорректный атрибут obj="${objAttr}"`, el);
 			continue;
 		}
 		ids = [...new Set(ids)];
 		if(ids.length > 1 && !Cls.multiObj)
 		{
-			console.warn(`Виджет "${type}" не поддерживает несколько obj, используется первый:`, objAttr, el);
+			console.warn(`[Виджеты] "${type}" не поддерживает несколько obj (${objAttr}), используется первый`, el);
 			ids = [ids[0]];
 		}
 
@@ -51,7 +50,7 @@ export function initWidgets(root = document, filter = null)
 		}
 		catch (err)
 		{
-			console.error('Некорректный JSON в config:', el, err);
+			console.error(`[Виджеты] Некорректный JSON в config (obj="${el.getAttribute('obj')}")`, el, err);
 			continue;
 		}
 
@@ -62,22 +61,18 @@ export function initWidgets(root = document, filter = null)
 		}
 		catch (err)
 		{
-			console.error('Ошибка Render():', el, err);
+			console.error(`[Виджеты] Ошибка Render() (obj="${el.getAttribute('obj')}"): ${err.message}`, el, err);
 			try { widget.Destroy(); } catch { /* уже неважно */ }
 			continue;
 		}
 
 		widgets.set(el, widget);
-		count++;
 	}
-
-	console.log(`Инициализировано виджетов: ${count}`);
 }
 
 /** Уничтожить виджеты внутри root (только те, что были созданы). */
 export function deinitWidgets(root = document)
 {
-	let count = 0;
 	for (const el of root.querySelectorAll('ui-element'))
 	{
 		const widget = widgets.get(el);
@@ -90,12 +85,9 @@ export function deinitWidgets(root = document)
 		}
 		catch (err)
 		{
-			console.error('Ошибка Destroy():', el, err);
+			console.error(`[Виджеты] Ошибка Destroy() (obj="${el.getAttribute('obj')}"): ${err.message}`, el, err);
 		}
-		count++;
 	}
-
-	console.log(`Деинициализировано виджетов: ${count}`);
 }
 
 /** Получить экземпляр виджета по его <ui-element>. */

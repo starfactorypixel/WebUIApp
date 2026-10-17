@@ -15,6 +15,7 @@
 //   - нет соединения     → ничего не отправляется, всё уйдёт при открытии.
 
 import { WSEvents, WSSubscribe, WSUnsubscribe } from '../ws.js';
+import { log } from '../log.js';
 
 const CHUNK_SIZE = 32;
 
@@ -97,7 +98,7 @@ WSEvents.addEventListener('packet', (e) =>
 		}
 		catch(err)
 		{
-			console.error(`Ошибка обработки пакета obj 0x${id.toString(16)}:`, err);
+			log.error(`[Пакеты] Ошибка обработки пакета obj 0x${id.toString(16)}: ${err.message}`, err);
 		}
 	}
 });

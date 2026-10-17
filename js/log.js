@@ -1,0 +1,41 @@
+// Лог системы: строка на странице (в <div id="log">, если он есть) + консоль браузера.
+//
+//   import { log } from './log.js';
+//   log.info('[WS] Соединение установлено');
+//   log.warn('[Газ М1+М2] SET 700: 0x0104=700, 0x0105=нет ответа');
+//   log.error('Некорректный JSON в config', el, err);
+//
+// Первый аргумент — текст (он попадает на страницу).
+// Остальные аргументы (элементы, ошибки, объекты) — только в консоль, там их удобно раскрыть.
+
+const LOG_MAX_LINES = 200;
+
+function write(level, msg, extra)
+{
+	const time = new Date().toTimeString().slice(0, 8); // ЧЧ:ММ:СС
+	const text = `${time} ${msg}`;
+
+	// Консоль
+	if(level === 'error') console.error(text, ...extra);
+	else if(level === 'warn') console.warn(text, ...extra);
+	else console.log(text, ...extra);
+
+	// Страница
+	const el = document.getElementById('log');
+	if(!el) return;
+
+	const line = document.createElement('div');
+	line.className = 'log_' + level; // log_info / log_warn / log_error — цвет в client.css
+	line.textContent = text;
+	el.appendChild(line);
+
+	while(el.childElementCount > LOG_MAX_LINES) el.firstElementChild.remove();
+	el.scrollTop = el.scrollHeight;
+}
+
+export const log =
+{
+	info:  (msg, ...extra) => write('info', msg, extra),
+	warn:  (msg, ...extra) => write('warn', msg, extra),
+	error: (msg, ...extra) => write('error', msg, extra),
+};
