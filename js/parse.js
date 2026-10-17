@@ -68,3 +68,20 @@ export function writeNumberToArray(value, type, littleEndian = true)
 
 	return Array.from(new Uint8Array(view.buffer));
 }
+
+/**
+ * Список "значение:подпись" через запятую.
+ * "255:ON,0:OFF" → Map { 255 → 'ON', 0 → 'OFF' } (порядок сохраняется)
+ */
+export function parseValueList(str)
+{
+	const map = new Map();
+	if(!str) return map;
+
+	for(const item of str.split(','))
+	{
+		const [value, name] = item.split(':');
+		map.set(Number(value), name ?? '');
+	}
+	return map;
+}

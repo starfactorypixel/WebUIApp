@@ -42,6 +42,11 @@ ui-element .ui_title {
 	width: 220px;
 }
 
+.ui-stream
+{
+	max-width: initial !important;
+}
+
 .ui-stream_content {
 	display: grid;
 	grid-auto-flow: column;
@@ -72,14 +77,9 @@ ui-element .ui_title {
 	width: 150px;
 }
 
-/* Состояние управляемых объектов (ObjGroup). Порядок важен: последнее правило сильнее. */
+/* Состояние управляемых объектов (Control). Порядок важен: последнее правило сильнее. */
 ui-element.is-mixed {
 	outline: 2px dotted #ef6c00;
-	outline-offset: -2px;
-}
-
-ui-element.is-partial {
-	outline: 2px dotted #9e9e9e;
 	outline-offset: -2px;
 }
 
@@ -104,12 +104,6 @@ ui-element.is-failed {
 
 .ui-range_value {
 	text-align: center;
-}
-
-.ui-radio_count {
-	margin-left: auto;
-	color: #666;
-	font-size: 12px;
 }
 
 /* Нет связи с сервером: данные на экране устаревшие */
@@ -167,4 +161,15 @@ body {
 
 .tabs__panel[hidden] {
 	display: none;
+}
+
+#log {
+	margin-top: 16px;
+	background: #222;
+	color: #9f9;
+	padding: 10px;
+	font: 12px monospace;
+	height: 160px;
+	overflow: auto;
+	border-radius: 6px;
 }

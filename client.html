@@ -101,7 +101,7 @@
 	</div>
 
 	<div data-tab-title="Рулевая рейка">
-		<ui-element type="radio" obj="0x01A4" config='{"name":"Режим поворота","radios":"1:Режим 1,2:Режим 2,4:Режим 3,8:Режим 4","type":"uint8"}'></ui-element>
+		<ui-element type="radio" obj="0x01A4" config='{"name":"Режим поворота","radios":"0:NONE,1:STRAIGHT,2:REVERSE,3:MIRROR,4:LOCK,128:REMOTE","type":"uint8"}'></ui-element>
 		<ui-element type="range" obj="0x01A5" config='{"name":"Целевой угол","format":"${value:%+5.1f}°","type":"int16","scale":10,"min":-45,"max":45,"step":0.5}'></ui-element>
 		<ui-element type="value" obj="0x01A6" config='{"name":"Угол передней рейки","format":"${value:%+5.1f}°","type":"int16","scale":10,"chart":{"count":100,"mode":"line"}}'></ui-element>
 		<ui-element type="value" obj="0x01A7" config='{"name":"Угол задней рейки","format":"${value:%+5.1f}°","type":"int16","scale":10,"chart":{"count":100,"mode":"line"}}'></ui-element>
@@ -129,6 +129,8 @@
 </div>
 
 <div id="log"></div>
+
+<ui-element type="value" obj="0x0110" config='{"name":"Скорость","format":"Speed: ${value:%02d}Kmh","type":"uint16","scale":10,"chart":{"count":64,"mode":"fill"}}'></ui-element>
 
 <!--
 <div class="ui-elements">

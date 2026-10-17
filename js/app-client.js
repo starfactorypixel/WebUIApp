@@ -3,7 +3,7 @@ import { initWidgets, deinitWidgets } from './client/dispatch.js';
 import { WSStart, WSEvents } from './ws.js';
 import './client/subscriptions.js'; // маршрутизация пакетов и повтор подписок после переподключения
 import { Tabs } from './tabs.js';
-import { ObjGroup } from './client/obj-group.js';
+import { Control } from './client/control.js';
 import { ButtonWidget } from './widgets/button.js';
 import { ValueWidget } from './widgets/value.js';
 import { MeterWidget } from './widgets/meter.js';
@@ -14,7 +14,7 @@ import { RangeWidget } from './widgets/range.js';
 const WS_URL = 'ws://localhost:8080';
 
 // Сколько ждать ответ 0x65 на команду (мс). У виджета можно переопределить: config.timeout.
-ObjGroup.defaultTimeout = 2000;
+Control.timeout = 2000;
 
 // 1. Регистрируем все известные типы виджетов в одном месте.
 //    Чтобы добавить новый тип — создать файл widgets/xxx.js и добавить сюда одну строку.

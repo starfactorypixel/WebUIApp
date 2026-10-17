@@ -1,13 +1,12 @@
 import { UIWidget } from './base.js';
 import { sprintfNamed, escapeHtml } from '../format.js';
-import { ObjGroup, applyGroupState } from '../client/obj-group.js';
+import { parseValueList } from '../parse.js';
+import { Control } from '../client/control.js';
 
 export class ButtonWidget extends UIWidget
 {
 	static type = 'button';
 	static multiObj = true;
-
-	#txtMap = new Map();
 
 	Render()
 	{
@@ -20,91 +19,63 @@ export class ButtonWidget extends UIWidget
 		</div>`;
 
 		this.refs.btn = this.element.querySelector('.ui-button_content button');
-		this.refs.btn.addEventListener('click', () => this.#onClick());
+		this.refs.btn.addEventListener('click', () => this.OnClick());
 
-		this.#txtMap.clear();
-		if(this.config.txt)
-		{
-			for (const item of this.config.txt.split(','))
-			{
-				const [pValue, pName] = item.split(':');
-				this.#txtMap.set(Number(pValue), pName);
-			}
-		}
+		this.txt = parseValueList(this.config.txt);
+		this.control = new Control(this.ids, this.config, () => this.Show());
 
-		this.group = new ObjGroup(this.ids,
-		{
-			type: this.config.type || 'uint8',
-			timeout: this.config.timeout,
-			onChange: state => this.#show(state),
-		});
-
-		for (const id of this.ids) this.Subscribe(id);
-		this.#show(this.group.state);
+		for(const id of this.ids) this.Subscribe(id);
+		this.Show();
 	}
 
 	Destroy()
 	{
-		this.group?.destroy();
+		this.control.destroy();
 		super.Destroy();
 	}
 
+	// Пакет от любого из obj → в Control, он вызовет Show()
 	Update(rx_data, id)
 	{
-		this.group.handle(id, rx_data);
+		this.control.onPacket(id, rx_data);
 	}
 
-	#onClick()
+	OnClick()
 	{
+		const c = this.control;
 		const cmd = this.config.cmd ?? (this.ids.length > 1 ? 'set' : 'toggle');
-		switch(cmd)
+
+		if(cmd === 'toggle') c.toggle();
+		else if(cmd === 'action') c.action();
+		else
 		{
-			case 'toggle': this.group.toggle(); break;
-			case 'action': this.group.action(); break;
-			case 'set':
-			{
-				const on = this.config.on ?? 255;
-				const off = this.config.off ?? 0;
-				const st = this.group.state;
-				this.group.set(st.status === 'ok' && st.value !== off ? off : on);
-				break;
-			}
-			default:
-				console.warn('button: неизвестный cmd', cmd, this.element);
+			// set: было включено → выключаем, иначе (выкл/смешано/неизвестно) → включаем
+			const on = this.config.on ?? 255;
+			const off = this.config.off ?? 0;
+			c.set(c.value === on ? off : on);
 		}
 	}
 
-	#show(state)
+	Show()
 	{
-		const value_raw = state.value;
-		const value = value_raw === null ? null : value_raw / (this.config.scale || 1);
+		const c = this.control;
+		const v = c.value;
+
+		let icon = v === null ? '🟡' : (v === 0 ? '🔴' : '🟢');
+		if(c.mixed) icon = '⚠️';
+		if(c.busy) icon = '⏳';
+
 		const data =
 		{
-			value,
-			value_raw,
-			icon1: this.#icon1(state),
-			txt: this.#txt(state),
-			count: `${state.known}/${state.total}`,
+			value: v === null ? null : v / (this.config.scale || 1),
+			value_raw: v,
+			icon1: icon,
+			txt: c.mixed ? 'смеш.' : (this.txt.get(v) ?? '-'),
+			count: `${c.values.size}/${this.ids.length}`,
 		};
 
 		this.refs.btn.innerHTML = sprintfNamed(this.config.format, data);
-		this.refs.btn.disabled = !!state.pending; // пока ждём ответ — повторно не жмём
-		applyGroupState(this.element, state);
-	}
-
-	#icon1(state)
-	{
-		if(state.pending) return '⏳';
-		if(state.status === 'mixed') return '⚠️';
-		if(state.value === null) return '🟡';
-		if(state.value === 0) return '🔴';
-		return '🟢';
-	}
-
-	#txt(state)
-	{
-		if(state.status === 'mixed') return 'смеш.';
-		const name = this.#txtMap.get(state.value);
-		return name !== undefined ? name : '-';
+		this.refs.btn.disabled = c.busy;
+		c.showState(this.element);
 	}
 }

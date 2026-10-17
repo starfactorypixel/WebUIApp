@@ -1,141 +1,103 @@
-// Менеджер подписок: подсчёт ссылок + маршрутизация пакетов.
+// Подписки: какие функции хотят получать пакеты какого obj.
 //
 //   const off = subscribe(0x0110, (data, id) => { ... });
 //   off(); // отписаться
 //
+// ВАЖНО: серверу запросы уходят ТОЛЬКО пачками, не больше CHUNK_SIZE id в сообщении.
+// subscribe()/unsubscribe() ничего не отправляют сами — они кладут id в очередь,
+// а flush() отправляет всю очередь в конце текущей задачи. Открытие вкладки
+// создаёт все её виджеты за одну задачу, поэтому вся вкладка уходит одной пачкой.
+//
 // Правила:
-//  - На один id может подписаться сколько угодно обработчиков (несколько
-//    виджетов с одним id, виджет вне вкладок + виджет во вкладке и т.д.).
-//  - CANIDSub уходит на КАЖДОГО нового подписчика: повторная подписка
-//    безвредна, а сервер в ответ присылает текущее состояние объекта —
-//    так новый виджет сразу получает данные.
-//  - CANIDUnsub уходит только когда ушёл ПОСЛЕДНИЙ подписчик id —
-//    чужую подписку случайно снять нельзя.
-//  - Отправка отложена до конца текущей задачи (microtask): при переключении
-//    вкладки (close → open подряд) общие id не отписываются, а все запросы
-//    склеиваются в пачки по CHUNK_SIZE.
-//  - Пока соединения нет, ничего не отправляется. После каждого 'open'
-//    (первый запуск или переподключение) серверу заново отправляются все
-//    актуальные id — сервер после обрыва про подписки ничего не помнит.
+//   - подписались        → id в очередь CANIDSub (сервер в ответ пришлёт текущее состояние obj);
+//   - ушёл последний     → id в очередь CANIDUnsub;
+//   - соединение открылось (первый раз или после обрыва) → CANIDSub на все obj из списка;
+//   - нет соединения     → ничего не отправляется, всё уйдёт при открытии.
 
-import { WSEvents, WSIsConnected, WSSubscribe, WSUnsubscribe } from '../ws.js';
+import { WSEvents, WSSubscribe, WSUnsubscribe } from '../ws.js';
 
 const CHUNK_SIZE = 32;
 
-const handlers = new Map(); // id -> Set<{ fn }>
-let serverIds = new Set();  // id, на которые сервер, по нашим данным, подписан
-const needSub = new Set();  // id с новыми подписчиками — отправить CANIDSub
-let flushQueued = false;
+const handlers = new Map(); // obj id -> [функция, функция, ...]
+
+const queueSub = new Set();   // ждут отправки CANIDSub
+const queueUnsub = new Set(); // ждут отправки CANIDUnsub
+let flushPlanned = false;
 
 export function subscribe(id, fn)
 {
-	if(!Number.isInteger(id))
-		throw new TypeError(`subscribe: id must be an Int, got ${id}`);
-	if(typeof fn !== 'function')
-		throw new TypeError('subscribe: handler must be a function');
-
-	// Обёртка-объект: один и тот же fn можно подписать дважды, и это будут две подписки.
-	const entry = { fn };
-	let set = handlers.get(id);
-	if(!set)
-	{
-		set = new Set();
-		handlers.set(id, set);
-	}
-	set.add(entry);
-	needSub.add(id);
-	scheduleFlush();
-
-	let active = true;
+	if(!handlers.has(id)) handlers.set(id, []);
+	handlers.get(id).push(fn);
+	queue(queueSub, id);
 
 	return function unsubscribe()
 	{
-		if(!active) return; // повторный вызов безопасен
-		active = false;
-		const s = handlers.get(id);
-		if(!s) return;
-		s.delete(entry);
-		if(s.size === 0) handlers.delete(id);
-		scheduleFlush();
+		const list = handlers.get(id);
+		if(!list) return;
+
+		const i = list.indexOf(fn);
+		if(i === -1) return; // уже отписаны
+		list.splice(i, 1);
+
+		if(list.length === 0)
+		{
+			handlers.delete(id);
+			queue(queueUnsub, id);
+		}
 	};
 }
 
-/** Список id, на которые сейчас есть хоть один обработчик (для отладки). */
-export function activeIds()
+function queue(set, id)
 {
-	return [...handlers.keys()];
-}
-
-function scheduleFlush()
-{
-	if(flushQueued) return;
-	flushQueued = true;
-	queueMicrotask(flush);
+	set.add(id);
+	if(flushPlanned) return;
+	flushPlanned = true;
+	queueMicrotask(flush); // в конце текущей задачи
 }
 
 function flush()
 {
-	flushQueued = false;
-	if(!WSIsConnected()) return; // отправим после 'open'
+	flushPlanned = false;
 
-	const toSub = [];
-	const toUnsub = [];
-	for (const id of handlers.keys())
-		if(needSub.has(id) || !serverIds.has(id)) toSub.push(id);
-	for (const id of serverIds)
-		if(!handlers.has(id)) toUnsub.push(id);
-	needSub.clear();
+	// Отписываем только тех, на кого так никто и не подписался обратно
+	// (при смене вкладки общий obj не отписывается).
+	const unsub = [...queueUnsub].filter(id => !handlers.has(id));
+	const sub = [...queueSub].filter(id => handlers.has(id));
+	queueUnsub.clear();
+	queueSub.clear();
 
-	sendChunked(WSUnsubscribe, toUnsub, id => serverIds.delete(id));
-	sendChunked(WSSubscribe, toSub, id => serverIds.add(id));
+	sendChunks(WSUnsubscribe, unsub);
+	sendChunks(WSSubscribe, sub);
 }
 
-function sendChunked(send, ids, onSent)
+function sendChunks(send, ids)
 {
-	for (let i = 0; i < ids.length; i += CHUNK_SIZE)
-	{
-		const chunk = ids.slice(i, i + CHUNK_SIZE);
-		if(!send(chunk)) return; // соединение пропало — досинхронизируемся после 'open'
-		chunk.forEach(onSent);
-	}
+	for(let i = 0; i < ids.length; i += CHUNK_SIZE)
+		send(ids.slice(i, i + CHUNK_SIZE)); // нет связи — не уйдёт, при открытии подпишемся на всё
 }
 
+// Соединение открылось — сервер ничего не помнит, подписываемся на всё заново.
 WSEvents.addEventListener('open', () =>
 {
-	serverIds = new Set(); // новое соединение — сервер чистый
-	flush();
+	sendChunks(WSSubscribe, [...handlers.keys()]);
 });
 
-WSEvents.addEventListener('close', () =>
-{
-	serverIds = new Set();
-});
-
+// Пришёл пакет — раздаём всем подписанным на этот obj.
 WSEvents.addEventListener('packet', (e) =>
 {
 	const { id, data } = e.detail;
-	const set = handlers.get(id);
-	if(!set) return; // пакет для id без подписчиков — игнорируем
+	const list = handlers.get(id);
+	if(!list) return;
 
-	// Копия: обработчик может отписаться прямо во время вызова.
-	for (const entry of [...set]) callHandler(entry, id, data);
+	for(const fn of [...list]) // копия: обработчик может отписаться прямо во время вызова
+	{
+		try
+		{
+			fn(data, id);
+		}
+		catch(err)
+		{
+			console.error(`Ошибка обработки пакета obj 0x${id.toString(16)}:`, err);
+		}
+	}
 });
-
-function callHandler(entry, id, data)
-{
-	try
-	{
-		entry.fn(data, id);
-	}
-	catch (err)
-	{
-		// Ошибка одного виджета не должна ломать остальные.
-		console.error(`Ошибка обработки пакета 0x${id.toString(16)}:`, err);
-	}
-}
-
-/** Ручная подача пакета (демо/тесты), идёт тем же путём, что и пакет из WS. */
-export function injectPacket(id, data)
-{
-	WSEvents.dispatchEvent(new CustomEvent('packet', { detail: { id, type: null, data } }));
-}
