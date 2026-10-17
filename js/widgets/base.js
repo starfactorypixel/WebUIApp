@@ -1,34 +1,74 @@
-import { parseNumber } from '../parse.js';
+import { readNumberFromArray } from '../parse.js';
+import { subscribe } from '../client/subscriptions.js';
 
 export class UIWidget
 {
 	static type = 'base'; // переопределяется в наследниках
+	static multiObj = false; // true — виджет умеет работать с несколькими obj (obj="0x01,0x02")
 
-	constructor(element, config, id)
+	#unsubs = [];
+
+	constructor(element, config, ids)
 	{
 		this.element = element;
 		this.config = config;
-		this.id = id;
+		this.ids = Array.isArray(ids) ? ids : [ids]; // все obj виджета
+		this.id = this.ids[0];                        // основной obj
 		this.refs = {}; // кэш под-элементов после рендера, чтобы не делать querySelector повторно
-		this.timer_type = {0x61:'normal', 0x62:'warning', 0x63:'critical'};
-		//this.Render();
+		this.timer_type = {0x61:'normal', 0x62:'warning', 0x63:'critical'};		// А если это event? Переименовать тип и логику на "доступный тип с данными"
 	}
 
-	// Строит внутренний HTML, сохраняет ссылки в this.refs. Переопределяется в наследнике.
+	// Строит внутренний HTML, сохраняет ссылки в this.refs и явно вызывает Subscribe().
 	Render()
 	{
-		throw new Error('render() not implemented');
+		throw new Error('Render() not implemented');
 	}
 
-	// Разбирает бинарные данные согласно config.type/scale. Можно переопределить (см. stream).
-	Parse(view, offset = 0)
+	// Освобождает всё, на что виджет подписался через Subscribe().
+	// Наследник переопределяет, только если у него есть свои ресурсы
+	// (графики, таймеры), и обязательно вызывает super.Destroy().
+	Destroy()
 	{
-		return parseNumber(view, offset, this.config.type, this.config.scale);
+		this.UnsubscribeAll();
 	}
 
-	// Применяет значение к уже отрендеренным элементам. Переопределяется в наследнике.
-	Update(value)
+	// Применяет пришедшие данные к отрендеренным элементам. Переопределяется в наследнике.
+	// data — массив байт пакета, id — от какого id он пришёл (важно, если подписок несколько).
+	Update(data, id)
 	{
-		throw new Error('update() not implemented');
+		throw new Error('Update() not implemented');
+	}
+
+	/**
+	 * Подписка на пакеты по id. Вызывать явно (обычно в Render()).
+	 * id по умолчанию — собственный id виджета, обработчик — Update().
+	 * Можно подписаться на несколько id и/или со своим обработчиком:
+	 *   this.Subscribe();                                  // свой id → Update
+	 *   this.Subscribe(0x0200, data => this.onAux(data));  // чужой id → свой обработчик
+	 * Отписка от всего — автоматически в Destroy().
+	 */
+	Subscribe(id = this.id, handler = (data, pid) => this.Update(data, pid))
+	{
+		const off = subscribe(id, handler);
+		this.#unsubs.push(off);
+		return off; // можно отписаться и раньше, вручную
+	}
+
+	UnsubscribeAll()
+	{
+		for (const off of this.#unsubs) off();
+		this.#unsubs = [];
+	}
+
+	/**
+	 * Прочитать число из пакета с учётом config.type / config.scale.
+	 * Если данных не хватает — { value: null, value_raw: null }.
+	 */
+	ReadValue(data, offset = 1, type = this.config.type)
+	{
+		const value_raw = readNumberFromArray(data, offset, type);
+		if(value_raw === null) return { value: null, value_raw: null };
+		const scale = this.config.scale || 1;
+		return { value: value_raw / scale, value_raw };
 	}
 }

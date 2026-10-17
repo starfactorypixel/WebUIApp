@@ -1,49 +1,105 @@
+// Жизненный цикл виджетов: создание по <ui-element> и уничтожение.
+// Разметка: <ui-element type="value" obj="0x0110" config='{...}'>
+//           <ui-element type="button" obj="0x0164,0x0165,0x0166" ...>  — группа (если виджет умеет)
+// Подписками и маршрутизацией пакетов занимается client/subscriptions.js.
+
 import { getWidgetClass } from './registry.js';
-import { SendSubscribe } from '../ws.js';
 
-// id -> [UIWidget, ...] (может быть несколько виджетов с одним id)
-const widgetsById = new Map();
+const widgets = new WeakMap(); // <ui-element> -> UIWidget
 
-export function initWidgets(root = document) {
-  root.querySelectorAll('ui-element').forEach(el => {
-    const type = el.getAttribute('type');
-    const id = parseInt(el.getAttribute('id'), 16);
-    const config = JSON.parse(el.getAttribute('config'));
+/**
+ * Создать виджеты для всех <ui-element> внутри root.
+ * Уже созданные пропускаются, поэтому повторный вызов безопасен.
+ * @param {ParentNode} root
+ * @param {(el: Element) => boolean} [filter]  какие элементы брать
+ */
+export function initWidgets(root = document, filter = null)
+{
+	let count = 0;
+	for (const el of root.querySelectorAll('ui-element'))
+	{
+		if(widgets.has(el)) continue;
+		if(filter && !filter(el)) continue;
 
-    const Cls = getWidgetClass(type);
-    if (!Cls) {
-      console.warn('Unknown widget type:', type);
-      return;
-    }
+		const type = el.getAttribute('type');
+		const Cls = getWidgetClass(type);
+		if(!Cls)
+		{
+			console.warn('Неизвестный тип виджета:', type, el);
+			continue;
+		}
 
-    const widget = new Cls(el, config, id);
-	widget.Render();
+		// obj — адрес объекта данных (hex) или список через запятую
+		const objAttr = el.getAttribute('obj') ?? '';
+		let ids = objAttr.split(',').map(s => parseInt(s.trim(), 16));
+		if(ids.length === 0 || ids.some(Number.isNaN))
+		{
+			console.warn('Некорректный атрибут obj виджета:', objAttr, el);
+			continue;
+		}
+		ids = [...new Set(ids)];
+		if(ids.length > 1 && !Cls.multiObj)
+		{
+			console.warn(`Виджет "${type}" не поддерживает несколько obj, используется первый:`, objAttr, el);
+			ids = [ids[0]];
+		}
 
-    if (!widgetsById.has(id)) widgetsById.set(id, []);
-    widgetsById.get(id).push(widget);
-  });
+		let config;
+		try
+		{
+			config = JSON.parse(el.getAttribute('config') || '{}');
+		}
+		catch (err)
+		{
+			console.error('Некорректный JSON в config:', el, err);
+			continue;
+		}
 
-  SendSubscribe();
+		const widget = new Cls(el, config, ids);
+		try
+		{
+			widget.Render();
+		}
+		catch (err)
+		{
+			console.error('Ошибка Render():', el, err);
+			try { widget.Destroy(); } catch { /* уже неважно */ }
+			continue;
+		}
 
-  console.log(`Инициализировано ${document.querySelectorAll('ui-element').length} виджетов`);
+		widgets.set(el, widget);
+		count++;
+	}
+
+	console.log(`Инициализировано виджетов: ${count}`);
 }
 
-// Универсальный приём: raw может быть ArrayBuffer, Uint8Array или обычный массив байт из JSON
-export function onPacket(id, raw) {
-  const widgets = widgetsById.get(id);
-  if (!widgets) return; // пакет для несуществующего элемента — игнорируем
+/** Уничтожить виджеты внутри root (только те, что были созданы). */
+export function deinitWidgets(root = document)
+{
+	let count = 0;
+	for (const el of root.querySelectorAll('ui-element'))
+	{
+		const widget = widgets.get(el);
+		if(!widget) continue;
+		widgets.delete(el);
 
-  const view = toDataView(raw);
-  for (const w of widgets) {
-    const value = w.Parse(view);
-    w.Update(raw);	// value
-  }
+		try
+		{
+			widget.Destroy();
+		}
+		catch (err)
+		{
+			console.error('Ошибка Destroy():', el, err);
+		}
+		count++;
+	}
+
+	console.log(`Деинициализировано виджетов: ${count}`);
 }
 
-function toDataView(raw) {
-  if (raw instanceof DataView) return raw;
-  if (raw instanceof ArrayBuffer) return new DataView(raw);
-  if (raw instanceof Uint8Array) return new DataView(raw.buffer, raw.byteOffset, raw.byteLength);
-  if (Array.isArray(raw)) return new DataView(new Uint8Array(raw).buffer);
-  throw new Error('Unsupported packet data format: ' + typeof raw);
+/** Получить экземпляр виджета по его <ui-element>. */
+export function getWidget(el)
+{
+	return widgets.get(el);
 }

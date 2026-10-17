@@ -172,8 +172,8 @@ obj_serial.on('data', (chunk) =>
 	SerialBuffer = Buffer.concat([SerialBuffer, chunk]);
 
 	// проверяем, есть ли вообще начало пакета
-	if (SerialBuffer.length < 9) return;
-	if (SerialBuffer[0] !== 0x3C) {
+	if(SerialBuffer.length < 9) return;
+	if(SerialBuffer[0] !== 0x3C) {
 		// если первый байт не 0x3C — удаляем его (ищем начало пакета)
 		SerialBuffer = SerialBuffer.subarray(1);
 		return;
@@ -182,16 +182,16 @@ obj_serial.on('data', (chunk) =>
 	let data_len = SerialBuffer[5];
 
 	// ждем пока весь пакет придёт
-	if (SerialBuffer.length < 9 + data_len) return;
+	if(SerialBuffer.length < 9 + data_len) return;
 
-	if (SerialBuffer[8 + data_len] !== 0x3E) {
+	if(SerialBuffer[8 + data_len] !== 0x3E) {
 		// неверный конец — сбрасываем первый байт и ищем новый пакет
 		SerialBuffer = SerialBuffer.subarray(1);
 		return;
 	}
 
 	let crc = CRC16_MCRF4XX(SerialBuffer, 1, data_len + 6);
-	if (
+	if(
 		SerialBuffer[6 + data_len] !== (crc & 0xFF) ||
 		SerialBuffer[7 + data_len] !== ((crc >> 8) & 0xFF)
 	) {
@@ -375,7 +375,7 @@ function CRC16_MCRF4XX(byteArr, start, length)
         crc ^= byteArr[m]
       
         for (n = 0; n < 8; n++) {
-            if (crc & 0x0001) {
+            if(crc & 0x0001) {
                 crc = (crc >> 1) ^ CRC_POLY
             } else {
                 crc = (crc >> 1)
@@ -403,7 +403,7 @@ function CRC16_MCRF4XX(byteArr, start, length)
 
 function createTransportPacket(payload_len, payload) {
     const HEAD = ['P', 'X'], VERSION = 0x02, DIRECTION = 0;
-    if (!Number.isInteger(payload_len) || payload_len < 0 || payload_len > 104 || !payload || payload.length !== payload_len)
+    if(!Number.isInteger(payload_len) || payload_len < 0 || payload_len > 104 || !payload || payload.length !== payload_len)
         throw new Error("Invalid payload");
 
     const data = new Uint8Array(8 + payload_len);
@@ -431,14 +431,14 @@ function createTransportPacket(payload_len, payload) {
 function parseTransportPacket(data) {
     const HEAD = ['P', 'X'], VERSION = 0x02, DIRECTION = 1;
     data = new Uint8Array(data);
-    if (data.length < 8) throw new Error("Invalid packet length");
-    if (data[0] !== HEAD[0] || data[1] !== HEAD[1]) throw new Error("Invalid head");
-    if ((data[2] & 0x0F) !== VERSION || (data[2] & 0xF0) !== 0) throw new Error("Invalid version/flags");
-    if ((data[3] & 0x7F) !== 0 || ((data[3] >> 7) & 1) !== DIRECTION) throw new Error("Invalid direction/flags");
+    if(data.length < 8) throw new Error("Invalid packet length");
+    if(data[0] !== HEAD[0] || data[1] !== HEAD[1]) throw new Error("Invalid head");
+    if((data[2] & 0x0F) !== VERSION || (data[2] & 0xF0) !== 0) throw new Error("Invalid version/flags");
+    if((data[3] & 0x7F) !== 0 || ((data[3] >> 7) & 1) !== DIRECTION) throw new Error("Invalid direction/flags");
 
     const crc = data[4] | (data[5] << 8);
     const payload_len = data[6] | (data[7] << 8);
-    if (payload_len > 104 || data.length !== 8 + payload_len) throw new Error("Invalid payload length");
+    if(payload_len > 104 || data.length !== 8 + payload_len) throw new Error("Invalid payload length");
 
     const tmp = new Uint8Array(data);
     tmp[4] = tmp[5] = 0;
@@ -450,7 +450,7 @@ function parseTransportPacket(data) {
             calc = (calc & 0x8000) ? ((calc << 1) ^ 0x1021) & 0xFFFF : (calc << 1) & 0xFFFF;
     }
 
-    if (calc !== crc) throw new Error("Invalid CRC");
+    if(calc !== crc) throw new Error("Invalid CRC");
 
     return { payload: Array.from(data.slice(8)), payload_len };
 }

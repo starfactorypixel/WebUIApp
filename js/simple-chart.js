@@ -92,8 +92,8 @@ export class SimpleChart {
       grid = true,
     } = options || {};
 
-    if (!container) throw new Error('SimpleChart: не передан container');
-    if (!Number.isInteger(dimensions) || dimensions < 1) {
+    if(!container) throw new Error('SimpleChart: не передан container');
+    if(!Number.isInteger(dimensions) || dimensions < 1) {
       throw new Error('SimpleChart: dimensions должно быть целым числом >= 1');
     }
 
@@ -130,7 +130,7 @@ export class SimpleChart {
     this._buildDom();
     this._rafId = null;
 
-    if (autoResize && typeof ResizeObserver !== 'undefined') {
+    if(autoResize && typeof ResizeObserver !== 'undefined') {
       this._ro = new ResizeObserver(() => this._resizeCanvas());
       this._ro.observe(this.container);
     }
@@ -148,7 +148,7 @@ export class SimpleChart {
    */
   push(value) {
     const values = Array.isArray(value) ? value : [value];
-    if (values.length !== this.dimensions) {
+    if(values.length !== this.dimensions) {
       console.warn(
         `SimpleChart: push() получил ${values.length} значени(е/я), ` +
         `а измерений (dimensions) настроено ${this.dimensions}. ` +
@@ -166,10 +166,10 @@ export class SimpleChart {
 
   /** Сменить состояние палитры целиком: 'normal' | 'warning' | 'critical'. */
   setState(state) {
-    if (!SimpleChart.STATES.includes(state)) {
+    if(!SimpleChart.STATES.includes(state)) {
       throw new Error(`SimpleChart: неизвестное состояние "${state}"`);
     }
-    if (this.state === state) return;
+    if(this.state === state) return;
     this.state = state;
     this._scheduleRender();
   }
@@ -202,8 +202,8 @@ export class SimpleChart {
 
   /** Отвязать canvas от DOM и остановить наблюдатели/анимацию. */
   destroy() {
-    if (this._ro) this._ro.disconnect();
-    if (this._rafId) cancelAnimationFrame(this._rafId);
+    if(this._ro) this._ro.disconnect();
+    if(this._rafId) cancelAnimationFrame(this._rafId);
     this.canvas.remove();
   }
 
@@ -215,11 +215,11 @@ export class SimpleChart {
     // Контейнер обязан быть точкой отсчёта для абсолютного позиционирования,
     // иначе canvas будет позиционироваться относительно более дальнего предка.
     const pos = getComputedStyle(this.container).position;
-    if (pos === 'static' || !pos) {
+    if(pos === 'static' || !pos) {
       this.container.style.position = 'relative';
     }
     // overflow:hidden — доп. страховка на случай долей пикселя при масштабировании
-    //if (!this.container.style.overflow) {
+    //if(!this.container.style.overflow) {
     //  this.container.style.overflow = 'hidden';
     //}
 
@@ -249,7 +249,7 @@ export class SimpleChart {
     // Если размер фактически не изменился — выходим. Это не столько
     // обязательное условие (после фикса выше цикла уже не будет), сколько
     // страховка от лишней работы при частых срабатываниях ResizeObserver.
-    if (w === this.cssWidth && h === this.cssHeight) return;
+    if(w === this.cssWidth && h === this.cssHeight) return;
 
     this.canvas.width = w * dpr;
     this.canvas.height = h * dpr;
@@ -260,7 +260,7 @@ export class SimpleChart {
   }
 
   _scheduleRender() {
-    if (this._rafId) return;
+    if(this._rafId) return;
     this._rafId = requestAnimationFrame(() => {
       this._rafId = null;
       this._render();
@@ -278,7 +278,7 @@ export class SimpleChart {
   }
 
   _computeRange() {
-    if (this.fixedMin !== null && this.fixedMax !== null) {
+    if(this.fixedMin !== null && this.fixedMax !== null) {
       return { min: this.fixedMin, max: this.fixedMax };
     }
     let min = Infinity, max = -Infinity;
@@ -286,13 +286,13 @@ export class SimpleChart {
       const buf = this.buffers[i];
       for (let k = 0; k < this.count; k++) {
         const v = buf[k];
-        if (Number.isNaN(v)) continue;
-        if (v < min) min = v;
-        if (v > max) max = v;
+        if(Number.isNaN(v)) continue;
+        if(v < min) min = v;
+        if(v > max) max = v;
       }
     }
-    if (min === Infinity) { min = 0; max = 1; }
-    if (min === max) { min -= 1; max += 1; }
+    if(min === Infinity) { min = 0; max = 1; }
+    if(min === max) { min -= 1; max += 1; }
     const pad = (max - min) * 0.08;
     return {
       min: this.fixedMin !== null ? this.fixedMin : min - pad,
@@ -314,7 +314,7 @@ export class SimpleChart {
     ctx.fillStyle = pal.background;
     ctx.fillRect(0, 0, w, h);
 
-    if (this.count < 2) return;
+    if(this.count < 2) return;
 
     const { min, max } = this._computeRange();
     const range = (max - min) || 1;
@@ -322,7 +322,7 @@ export class SimpleChart {
     const toY = (v) => y1 - ((v - min) / range) * plotH;
 
     // сетка (отключается через options.grid = false / setGrid(false))
-    if (this.showGrid) {
+    if(this.showGrid) {
       ctx.strokeStyle = pal.grid;
       ctx.lineWidth = 1;
       const gridLines = 4;
@@ -346,13 +346,13 @@ export class SimpleChart {
       // Линия и заливка — два отдельных path'а, каждый строится с нуля:
       // так заливка всегда корректна и не зависит от состояния пути после stroke().
       const drawSegment = (from, to) => {
-        if (to - from < 1) return; // меньше двух точек — рисовать нечего
+        if(to - from < 1) return; // меньше двух точек — рисовать нечего
 
         ctx.beginPath();
         for (let k = from; k <= to; k++) {
           const x = toX(offset + k);
           const y = toY(data[k]);
-          if (k === from) ctx.moveTo(x, y);
+          if(k === from) ctx.moveTo(x, y);
           else ctx.lineTo(x, y);
         }
         ctx.strokeStyle = color;
@@ -361,7 +361,7 @@ export class SimpleChart {
         ctx.lineCap = 'round';
         ctx.stroke();
 
-        if (this.fillMode === 'fill') {
+        if(this.fillMode === 'fill') {
           ctx.beginPath();
           ctx.moveTo(toX(offset + from), y1);
           for (let k = from; k <= to; k++) {
@@ -376,26 +376,26 @@ export class SimpleChart {
 
       let segStart = -1;
       for (let k = 0; k < data.length; k++) {
-        if (Number.isNaN(data[k])) {
-          if (segStart !== -1) { drawSegment(segStart, k - 1); segStart = -1; }
+        if(Number.isNaN(data[k])) {
+          if(segStart !== -1) { drawSegment(segStart, k - 1); segStart = -1; }
           continue;
         }
-        if (segStart === -1) segStart = k;
+        if(segStart === -1) segStart = k;
       }
-      if (segStart !== -1) drawSegment(segStart, data.length - 1);
+      if(segStart !== -1) drawSegment(segStart, data.length - 1);
     }
   }
 
   // hex/rgb -> rgba(...) с нужной прозрачностью, для заливки
   _withAlpha(color, alpha) {
-    if (color.startsWith('#')) {
+    if(color.startsWith('#')) {
       const hex = color.slice(1);
       const full = hex.length === 3 ? hex.split('').map((c) => c + c).join('') : hex;
       const bigint = parseInt(full, 16);
       const r = (bigint >> 16) & 255, g = (bigint >> 8) & 255, b = bigint & 255;
       return `rgba(${r},${g},${b},${alpha})`;
     }
-    if (color.startsWith('rgb')) {
+    if(color.startsWith('rgb')) {
       const nums = color.match(/[\d.]+/g).slice(0, 3);
       return `rgba(${nums[0]},${nums[1]},${nums[2]},${alpha})`;
     }

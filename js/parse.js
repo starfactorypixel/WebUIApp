@@ -1,108 +1,70 @@
 export const TYPE_SIZES = {
-  uint8: 1, int8: 1,
-  uint16: 2, int16: 2,
-  uint32: 4, int32: 4,
-  float32: 4,
+	bool: 1,
+	uint8: 1, int8: 1,
+	uint16: 2, int16: 2,
+	uint32: 4, int32: 4,
+	float32: 4, float64: 8,
 };
 
-export function typeSize(type) {
-  return TYPE_SIZES[type] ?? 1;
+export function typeSize(type)
+{
+	const size = TYPE_SIZES[type];
+	if(size === undefined) throw new Error('Unknown type: ' + type);
+	return size;
 }
-
-export function parseNumber(view, offset, type, scale = 1) {
-  let raw;
-  switch (type) {
-    case 'uint8':   raw = view.getUint8(offset); break;
-    case 'int8':    raw = view.getInt8(offset); break;
-    case 'uint16':  raw = view.getUint16(offset, true); break;
-    case 'int16':   raw = view.getInt16(offset, true); break;
-    case 'uint32':  raw = view.getUint32(offset, true); break;
-    case 'int32':   raw = view.getInt32(offset, true); break;
-    case 'float32': raw = view.getFloat32(offset, true); break;
-    default: throw new Error('unknown type ' + type);
-  }
-  return raw / scale;
-}
-
-
-
-
 
 /**
- * Чтение числа из обычного массива JS через DataView
- * @param {number[]} arr - обычный JS массив чисел 0-255
+ * Чтение числа из массива байт.
+ * @param {number[]|Uint8Array|ArrayBuffer} arr - байты пакета (0-255)
  * @param {number} offset - смещение в байтах
- * @param {'int8'|'uint8'|'int16'|'uint16'|'int32'|'uint32'|'float32'|'float64'} type
+ * @param {'bool'|'int8'|'uint8'|'int16'|'uint16'|'int32'|'uint32'|'float32'|'float64'} type
  * @param {boolean} [littleEndian=true]
+ * @returns {number|null} null, если байт не хватает (короткий/пустой пакет)
  */
 export function readNumberFromArray(arr, offset, type, littleEndian = true)
 {
-	if(arr.length <= offset) return null;
-  // превращаем массив в Uint8Array
-  const u8 = new Uint8Array(arr);
-  const view = new DataView(u8.buffer);
+	const size = typeSize(type);
+	if(arr == null) return null;
 
-  switch (type) {
-	case 'bool': return view.getUint8(offset);
-    case 'int8': return view.getInt8(offset);
-    case 'uint8': return view.getUint8(offset);
-    case 'int16': return view.getInt16(offset, littleEndian);
-    case 'uint16': return view.getUint16(offset, littleEndian);
-    case 'int32': return view.getInt32(offset, littleEndian);
-    case 'uint32': return view.getUint32(offset, littleEndian);
-    case 'float32': return view.getFloat32(offset, littleEndian);
-    case 'float64': return view.getFloat64(offset, littleEndian);
-    default: throw new Error('Unknown type: ' + type);
-  }
-}
+	const u8 = arr instanceof Uint8Array ? arr : new Uint8Array(arr);
+	if(offset < 0 || offset + size > u8.length) return null;
 
-
-export function writeNumberToArray(value, type, littleEndian = false)
-{
-	const types =
+	const view = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
+	switch(type)
 	{
-		bool:    ['setUint8',   1, value ? 1 : 0],
-		int8:    ['setInt8',    1, value],
-		uint8:   ['setUint8',   1, value],
-		int16:   ['setInt16',   2, value],
-		uint16:  ['setUint16',  2, value],
-		int32:   ['setInt32',   4, value],
-		uint32:  ['setUint32',  4, value],
-		float32: ['setFloat32', 4, value],
-		float64: ['setFloat64', 8, value],
-	};
-
-	const t = types[type];
-	if(!t) throw new Error('Unknown type: ' + type);
-
-	const [method, size, val] = t;
-
-	const buffer = new ArrayBuffer(size);
-	const view = new DataView(buffer);
-
-	if(size === 1)
-		view[method](0, val);
-	else
-		view[method](0, val, littleEndian);
-
-	return Array.from(new Uint8Array(buffer));
+		case 'bool':    return view.getUint8(offset);
+		case 'int8':    return view.getInt8(offset);
+		case 'uint8':   return view.getUint8(offset);
+		case 'int16':   return view.getInt16(offset, littleEndian);
+		case 'uint16':  return view.getUint16(offset, littleEndian);
+		case 'int32':   return view.getInt32(offset, littleEndian);
+		case 'uint32':  return view.getUint32(offset, littleEndian);
+		case 'float32': return view.getFloat32(offset, littleEndian);
+		case 'float64': return view.getFloat64(offset, littleEndian);
+	}
 }
 
+/**
+ * Запись числа в массив байт.
+ * @param {boolean} [littleEndian=true] - по умолчанию как в readNumberFromArray
+ */
+export function writeNumberToArray(value, type, littleEndian = true)
+{
+	const size = typeSize(type);
+	const view = new DataView(new ArrayBuffer(size));
 
+	switch(type)
+	{
+		case 'bool':    view.setUint8(0, value ? 1 : 0); break;
+		case 'int8':    view.setInt8(0, value); break;
+		case 'uint8':   view.setUint8(0, value); break;
+		case 'int16':   view.setInt16(0, value, littleEndian); break;
+		case 'uint16':  view.setUint16(0, value, littleEndian); break;
+		case 'int32':   view.setInt32(0, value, littleEndian); break;
+		case 'uint32':  view.setUint32(0, value, littleEndian); break;
+		case 'float32': view.setFloat32(0, value, littleEndian); break;
+		case 'float64': view.setFloat64(0, value, littleEndian); break;
+	}
 
-
-export function writeNumberToArray2(value, type, littleEndian) {
-  const sizes = { uint8:1, int8:1, uint16:2, int16:2, uint32:4, int32:4, float32:4 };
-  const size = sizes[type] ?? 1;
-  const buf = new ArrayBuffer(size);
-  const view = new DataView(buf);
-  const setters = {
-    uint8: 'setUint8', int8: 'setInt8',
-    uint16: 'setUint16', int16: 'setInt16',
-    uint32: 'setUint32', int32: 'setInt32',
-    float32: 'setFloat32',
-  };
-  const method = setters[type] ?? 'setUint8';
-  view[method](0, value, ...(size > 1 ? [littleEndian] : []));
-  return Array.from(new Uint8Array(buf));
+	return Array.from(new Uint8Array(view.buffer));
 }

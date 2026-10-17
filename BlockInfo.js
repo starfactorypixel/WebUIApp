@@ -19,13 +19,13 @@ function parsePacket(byteArray) {
     const can_ver = view.getUint8(offset++);
 
     const sn = [];
-    for (let i = 0; i < 8; i++)
+    for(let i = 0; i < 8; i++)
 	{
         sn.push(view.getUint8(offset++));
     }
 
     const features = [];
-    for (let i = 0; i < 7; i++)
+    for(let i = 0; i < 7; i++)
 	{
         features.push(view.getUint8(offset++));
     }
@@ -63,7 +63,7 @@ function parsePacket(byteArray) {
 function createOrUpdateBlock(info) {
     let block = blocksMap.get(info.baseID);
 
-    if (!block) {
+    if(!block) {
         block = document.createElement("div");
         block.className = "device-block";
         block.dataset.baseid = info.baseID;

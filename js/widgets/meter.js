@@ -1,7 +1,5 @@
 import { UIWidget } from './base.js';
-import { readNumberFromArray } from '../parse.js';
-import { sprintfNamed } from '../format.js';
-import { AddSubscribe } from '../ws.js';
+import { sprintfNamed, escapeHtml } from '../format.js';
 
 export class MeterWidget extends UIWidget
 {
@@ -9,31 +7,29 @@ export class MeterWidget extends UIWidget
 
 	Render()
 	{
+		const c = this.config;
 		this.element.innerHTML =
-		`<div class="ui-meter">
-			<div class="ui_title ui-meter_title">${this.config.name}</div>
+		`<div class="ui_root ui-meter">
+			<div class="ui_title ui-meter_title">${escapeHtml(c.name)}</div>
 			<div class="ui-meter_content">
-				<meter min="${this.config.min}" max="${this.config.max}" low="${this.config.low}" high="${this.config.high}" optimum="${this.config.optimum}" value="${this.config.min}"></meter>
+				<meter min="${c.min}" max="${c.max}" low="${c.low}" high="${c.high}" optimum="${c.optimum}" value="${c.min}"></meter>
 				<div class="ui-meter_value"></div>
 			</div>
-		<div>`;
+		</div>`;
 
 		this.refs.meter = this.element.querySelector('.ui-meter_content meter');
 		this.refs.value = this.element.querySelector('.ui-meter_value');
 
-		AddSubscribe(this.id);
+		this.Subscribe();
 	}
 
 	Update(rx_data)
 	{
-		let value_raw = readNumberFromArray(rx_data, 1, this.config.type, true);
-		let value = value_raw / this.config.scale;
-		let data = { value: value, value_raw: value_raw };
-
-		if (value_raw == 0) return;
+		const data = this.ReadValue(rx_data);
+		if(data.value === null) return;
 
 		this.refs.meter.value = data.value;
-		this.refs.meter.innerHTML = `[${this.config.min}__${data.value}__${this.config.max}]`;
+		this.refs.meter.textContent = `[${this.config.min}__${data.value}__${this.config.max}]`;
 		this.refs.value.innerHTML = sprintfNamed(this.config.format, data);
 	}
 }

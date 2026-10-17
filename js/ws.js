@@ -1,125 +1,182 @@
-// Модуль-синглтон: создаётся один раз при первом импорте,
-// и все, кто импортирует этот файл, получают ОДИН И ТОТ ЖЕ объект socket.
+// Единственное WS-соединение приложения (модуль-синглтон).
+//
+// Что здесь есть:
+//  - автоматическое переподключение с экспоненциальной задержкой (0.5с → 10с);
+//  - события соединения через WSEvents: 'open', 'close', 'packet';
+//  - класс 'ws-offline' на <html>, пока связи нет (для стилей);
+//  - безопасная отправка: если соединения нет, команда НЕ ставится в очередь,
+//    а отбрасывается (иначе команда устройству может «выстрелить» спустя минуту
+//    после нажатия кнопки). Подписки при этом не теряются — их хранит
+//    client/subscriptions.js и сам повторяет после каждого переподключения.
+//
+// Модуль ничего не импортирует, поэтому циклических зависимостей больше нет.
 
-import { initWidgets, onPacket } from './client/dispatch.js';
+const RECONNECT_MIN_MS = 500;
+const RECONNECT_MAX_MS = 10000;
 
-export const socket = new WebSocket('ws://localhost:8080');
+/** Шина событий соединения: 'open', 'close', 'packet' (detail = { id, type, data }). */
+export const WSEvents = new EventTarget();
 
-socket.addEventListener('open', (event) =>
+let url = null;
+let socket = null;
+let retryDelay = RECONNECT_MIN_MS;
+let retryTimer = null;
+
+/** Запуск соединения. Вызывается один раз из app-client.js. */
+export function WSStart(wsUrl)
 {
-	console.log("WS: Соединение установлено:", event.target.url);
+	if(url !== null) return; // уже запущено
+	url = wsUrl;
 
-	//GetMode('RGB');
-	//GetMode('W1');
-	//GetMode('W2');
-	//WSOnOpenEvent();
-	initWidgets();
-});
+	// Сеть вернулась / вкладка снова видна — не ждём таймер, пробуем сразу.
+	window.addEventListener('online', reconnectNow);
+	document.addEventListener('visibilitychange', () =>
+	{
+		if(document.visibilityState === 'visible') reconnectNow();
+	});
 
-socket.addEventListener('close', () =>
+	setOnline(false);
+	connect();
+}
+
+export function WSIsConnected()
 {
-	console.log('WS disconnected');
-});
+	return socket !== null && socket.readyState === WebSocket.OPEN;
+}
 
-socket.addEventListener('message', (message) => 
+function connect()
+{
+	clearTimeout(retryTimer);
+	retryTimer = null;
+
+	let ws;
+	try
+	{
+		ws = new WebSocket(url);
+	}
+	catch (err)
+	{
+		console.error('WS: не удалось создать соединение:', err);
+		scheduleReconnect();
+		return;
+	}
+	socket = ws;
+	let opened = false;
+
+	ws.addEventListener('open', () =>
+	{
+		if(socket !== ws) return;
+		opened = true;
+		console.log('WS: соединение установлено:', url);
+		retryDelay = RECONNECT_MIN_MS;
+		setOnline(true);
+		WSEvents.dispatchEvent(new Event('open'));
+	});
+
+	ws.addEventListener('close', (event) =>
+	{
+		if(socket !== ws) return; // событие от старого сокета
+		socket = null;
+		setOnline(false);
+		if(opened)
+		{
+			console.log(`WS: соединение потеряно (code ${event.code})`);
+			WSEvents.dispatchEvent(new Event('close'));
+		}
+		scheduleReconnect();
+	});
+
+	// 'error' всегда сопровождается 'close', переподключение делается там.
+	ws.addEventListener('error', () => {});
+
+	ws.addEventListener('message', onMessage);
+}
+
+function scheduleReconnect()
+{
+	if(retryTimer !== null) return;
+	const delay = retryDelay * (0.8 + Math.random() * 0.4); // небольшой разброс
+	retryDelay = Math.min(retryDelay * 2, RECONNECT_MAX_MS);
+	console.log(`WS: переподключение через ${Math.round(delay)} мс`);
+	retryTimer = setTimeout(connect, delay);
+}
+
+function reconnectNow()
+{
+	if(url === null || socket !== null) return; // сокет есть (открыт или подключается)
+	retryDelay = RECONNECT_MIN_MS;
+	connect();
+}
+
+function setOnline(online)
+{
+	const cl = document.documentElement.classList;
+	cl.toggle('ws-online', online);
+	cl.toggle('ws-offline', !online);
+}
+
+function onMessage(message)
 {
 	let msg;
 	try
 	{
 		msg = JSON.parse(message.data);
-	} catch (err)
+	}
+	catch (err)
 	{
-		console.error('Ошибка JSON:', err);
+		console.error('WS: ошибка JSON:', err);
 		return;
 	}
 
-	if (msg.data.type == 0x05)
-	{
-		console.log(msg);
+	const d = msg?.data;
+	if(d === null || typeof d !== 'object') return; // ответ другого формата (ack и т.п.)
 
-		if (msg.data.id == 1)
-		{
-			processPacket(msg.data.data);
-			return;
-		}
+	if(d.type == 0x05 && d.id == 1)
+	{
+		processPacket(d.data);
+		return;
 	}
 
-	onPacket(msg.data.id, msg.data.data)
-});
+	WSEvents.dispatchEvent(new CustomEvent('packet', { detail: { id: Number(d.id), type: d.type, data: d.data } }));
+}
 
 function processPacket(data)
 {
 	// ваш существующий алгоритм
 }
 
+/** Отправка JSON. Возвращает false, если соединения нет (сообщение отброшено). */
+export function WSSend(obj)
+{
+	if(!WSIsConnected()) return false;
+	socket.send(JSON.stringify(obj));
+	return true;
+}
+
 export function WSSendRaw(type, id, bytes)
 {
-	if (!Number.isInteger(type))
+	if(!Number.isInteger(type))
 		throw new TypeError('SendRaw: type param must be an Int');
-	if (!Number.isInteger(id))
+	if(!Number.isInteger(id))
 		throw new TypeError('SendRaw: id param must be an Int');
-	if (!Array.isArray(bytes))
+	if(!Array.isArray(bytes))
 		throw new TypeError('SendRaw: bytes param must be an Array');
 
-	const packet =
-	{
-		cmd: "Raw",
-		type: type,
-		id: id,
-		bytes: bytes
-	};
-	socket.send(JSON.stringify(packet));
+	const ok = WSSend({ cmd: 'Raw', type, id, bytes });
+	if(!ok) console.warn(`WS: нет соединения, команда для 0x${id.toString(16)} не отправлена`);
+	return ok;
 }
 
-
-
-
-
-let subscribe_idx = [];
-
-export function AddSubscribe(id)
+export function WSSubscribe(ids)
 {
-	subscribe_idx.push(id);
+	if(!Array.isArray(ids))
+		throw new TypeError('WSSubscribe: ids must be an Array');
+	return WSSend({ cmd: 'CANIDSub', data: ids });
 }
 
-export function SendSubscribe()
+export function WSUnsubscribe(ids)
 {
-    const CHUNK_SIZE = 32;
-    
-    for (let i = 0; i < subscribe_idx.length; i += CHUNK_SIZE) {
-        const chunk = subscribe_idx.slice(i, i + CHUNK_SIZE);
-        WSSubscribe(chunk);
-    }
-
-	subscribe_idx = [];
+	if(!Array.isArray(ids))
+		throw new TypeError('WSUnsubscribe: ids must be an Array');
+	return WSSend({ cmd: 'CANIDUnsub', data: ids });
 }
-
-
-export function WSSubscribe(params)
-{
-	if (!Array.isArray(params))
-		throw new TypeError('Pixel_Subscribe: params must be an Array');
-
-	let obj =
-	{
-		cmd: "CANIDSub",
-		data: params
-	};
-
-	socket.send(JSON.stringify(obj));
-}
-
-export function WSUnsubscribe(params)
-{
-	if (!Array.isArray(params))
-		throw new TypeError('Pixel_Unsubscribe: params must be an Array');
-
-	let obj =
-	{
-		cmd: "CANIDUnsub",
-		data: params
-	};
-
-	socket.send(JSON.stringify(obj));
-}
-

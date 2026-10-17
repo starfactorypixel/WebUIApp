@@ -62,19 +62,19 @@ function toHex4(n) {
 function sprintfNamed(str, data) {
   return str.replace(/\$\{(\w+)(?::([^}]+))?\}/g, (_, key, format) => {
     let value = data[key];
-    if (value == null) return "";
+    if(value == null) return "";
 
-    if (!format) return value;
+    if(!format) return value;
 
     // ---- printf-подобный разбор ----
     const match = format.match(/%([ +]?)(0?)([0-9]*)(?:\.([0-9]+))?([dfsxX])/);
 
-    if (!match) return value;
+    if(!match) return value;
 
     let [, signFlag, zeroPad, width, precision, type] = match;
 
     // ---- Тип ----
-    switch (type) {
+    switch(type) {
       case "d": // integer
         value = parseInt(value);
         break;
@@ -97,15 +97,15 @@ function sprintfNamed(str, data) {
     }
 
     // ---- Обработка знака ----
-    if (signFlag === "+" && value >= 0) {
+    if(signFlag === "+" && value >= 0) {
       value = "+" + value;
     } 
-    else if (signFlag === " " && value >= 0) {
+    else if(signFlag === " " && value >= 0) {
       value = " " + value;
     }
 
     // ---- Дополнение нулями ----
-    if (width) {
+    if(width) {
       const padChar = zeroPad ? "0" : " ";
       value = value.toString().padStart(Number(width), padChar);
     }
@@ -128,7 +128,7 @@ function readNumberFromArray(arr, offset, type, littleEndian = false)
   const u8 = new Uint8Array(arr);
   const view = new DataView(u8.buffer);
 
-  switch (type) {
+  switch(type) {
 	case 'bool': return view.getUint8(offset);
     case 'int8': return view.getInt8(offset);
     case 'uint8': return view.getUint8(offset);
@@ -178,12 +178,12 @@ function writeNumberToArray(value, type, littleEndian = false)
 const _jsonCache = new Map();
 async function loadJson(file)
 {
-	if (_jsonCache.has(file))
+	if(_jsonCache.has(file))
 		return;
 
 	const response = await fetch(file);
 
-	if (!response.ok)
+	if(!response.ok)
 		throw new Error(`Failed to load JSON: ${response.status}`);
 
 	_jsonCache.set(file, await response.json());
@@ -193,7 +193,7 @@ function findInJson(file, key, value)
 {
 	const data = _jsonCache.get(file);
 
-	if (data === undefined)
+	if(data === undefined)
 		return undefined;
 
 	return data.find(item => item[key] === value);

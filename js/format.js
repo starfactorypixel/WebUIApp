@@ -1,74 +1,77 @@
-// Разбирает "%02d", "%2.1f" и подставляет значение по шаблону ${name} / ${name:%fmt}
-export function formatTemplate(template, vars) {
-  return template.replace(/\$\{(\w+)(?::(%[\d.]*[dfs]))?\}/g, (_, name, fmt) => {
-    const v = vars[name];
-    return fmt ? sprintf(fmt, v) : String(v);
-  });
+/** Экранирование текста для вставки в innerHTML. */
+export function escapeHtml(str)
+{
+	return String(str ?? '')
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;')
+		.replace(/'/g, '&#39;');
 }
 
-function sprintf(fmt, value) {
-  const m = fmt.match(/^%(\d+)?(?:\.(\d+))?([dfs])$/);
-  if (!m) return String(value);
-  const [, width, prec, conv] = m;
-  let str;
-  if (conv === 'f') str = Number(value).toFixed(prec !== undefined ? +prec : 6);
-  else if (conv === 'd') str = String(Math.trunc(value));
-  else str = String(value);
-  if (width) str = str.padStart(+width, '0');
-  return str;
-}
+/**
+ * Подстановка ${name} / ${name:%fmt} из data.
+ * Поддерживается printf-подобный формат: %[+ ][0][width][.prec](d|f|s|x|X)
+ * Отсутствующее (null/undefined) значение подставляется как пустая строка.
+ */
+export function sprintfNamed(str, data)
+{
+	return str.replace(/\$\{(\w+)(?::([^}]+))?\}/g, (_, key, format) =>
+	{
+		let value = data[key];
+		if(value == null) return '';
 
-export function sprintfNamed(str, data) {
-  return str.replace(/\$\{(\w+)(?::([^}]+))?\}/g, (_, key, format) => {
-    let value = data[key];
-    if (value == null) return "";
+		if(!format) return String(value);
 
-    if (!format) return value;
+		const match = format.match(/%([ +]?)(0?)([0-9]*)(?:\.([0-9]+))?([dfsxX])/);
+		if(!match) return String(value);
 
-    // ---- printf-подобный разбор ----
-    const match = format.match(/%([ +]?)(0?)([0-9]*)(?:\.([0-9]+))?([dfsxX])/);
+		const [, signFlag, zeroPad, width, precision, type] = match;
 
-    if (!match) return value;
+		let negative = false;
+		switch(type)
+		{
+			case 'd': // integer
+				value = Math.trunc(Number(value));
+				negative = value < 0;
+				value = String(Math.abs(value));
+				break;
 
-    let [, signFlag, zeroPad, width, precision, type] = match;
+			case 'f': // float
+				value = Number(value);
+				negative = value < 0;
+				value = Math.abs(value).toFixed(precision ? Number(precision) : 0);
+				break;
 
-    // ---- Тип ----
-    switch (type) {
-      case "d": // integer
-        value = parseInt(value);
-        break;
+			case 'x': // hex lower
+				value = Math.trunc(Number(value)).toString(16);
+				break;
 
-      case "f": // float
-        value = Number(value).toFixed(precision ? Number(precision) : 0);
-        break;
+			case 'X': // hex upper
+				value = Math.trunc(Number(value)).toString(16).toUpperCase();
+				break;
 
-      case "x": // hex lower
-        value = Number(value).toString(16);
-        break;
+			case 's':
+				value = String(value);
+				break;
+		}
 
-      case "X": // hex upper
-        value = Number(value).toString(16).toUpperCase();
-        break;
+		// ---- Знак (отдельно от числа, чтобы нули вставали после него: -05, +0012.3) ----
+		let sign = '';
+		if(negative) sign = '-';
+		else if(type === 'd' || type === 'f')
+		{
+			if(signFlag === '+') sign = '+';
+			else if(signFlag === ' ') sign = ' ';
+		}
 
-      case "s":
-        value = String(value);
-        break;
-    }
+		// ---- Ширина ----
+		const w = width ? Number(width) : 0;
+		if(zeroPad && type !== 's')
+			value = sign + value.padStart(Math.max(0, w - sign.length), '0');
+		else
+			value = (sign + value).padStart(w, ' ');
 
-    // ---- Обработка знака ----
-    if (signFlag === "+" && value >= 0) {
-      value = "+" + value;
-    } 
-    else if (signFlag === " " && value >= 0) {
-      value = " " + value;
-    }
-
-    // ---- Дополнение нулями ----
-    if (width) {
-      const padChar = zeroPad ? "0" : " ";
-      value = value.toString().padStart(Number(width), padChar);
-    }
-
-    return value;
-  });
+		return value;
+	});
 }
