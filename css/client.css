@@ -175,6 +175,7 @@ body {
 	border-radius: 6px;
 }
 
+/* Уровни лога (js/log.js) */
 #log .log_warn {
 	color: #ffd54f;
 }
@@ -182,3 +183,55 @@ body {
 #log .log_error {
 	color: #ff6b6b;
 }
+
+/* Виджет cells: сводка по ячейкам АКБ */
+.ui-cells_content {
+	display: grid;
+	grid-template-columns: auto auto 1fr;
+	column-gap: 6px;
+	align-items: baseline;
+	font-variant-numeric: tabular-nums;
+}
+
+.ui-cells_sign {
+	color: #888;
+}
+
+.ui-cells_num {
+	color: #666;
+	font-size: 12px;
+}
+
+.ui-cells_val {
+	text-align: right;
+	font-weight: 600;
+}
+
+.ui-cells_delta {
+	grid-column: 2 / 4;
+	text-align: right;
+	font-weight: 600;
+}
+
+.ui-cells_bar {
+	position: relative;
+	height: 6px;
+	margin-top: 6px;
+	background: #e3e5e8;
+	border-radius: 3px;
+}
+
+.ui-cells_spread {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	background: #2e7d32;
+	border-radius: 3px;
+}
+
+/* Уровень из fId 0x61/0x62/0x63 — полоса слева и цвет разброса */
+ui-element.lvl-normal   { box-shadow: inset 4px 0 #2e7d32; }
+ui-element.lvl-warning  { box-shadow: inset 4px 0 #ef6c00; }
+ui-element.lvl-critical { box-shadow: inset 4px 0 #c62828; background: #fff5f5; }
+ui-element.lvl-warning  .ui-cells_spread { background: #ef6c00; }
+ui-element.lvl-critical .ui-cells_spread { background: #c62828; }
