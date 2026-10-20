@@ -61,15 +61,16 @@ export class UIWidget
 	}
 
 	/**
-	 * Уровень тревоги из fId (0x61/0x62/0x63, см. timer_type) → класс на <ui-element>:
-	 * lvl-normal / lvl-warning / lvl-critical. Остальные fId (например, 0x65) уровень не меняют.
+	 * Раскраска по типу таймера: fId 0x61/0x62/0x63 (см. timer_type) → класс на <ui-element>:
+	 * color-normal / color-warning / color-critical. Остальные fId (например, 0x65) цвет не меняют.
+	 * Вызывать только если включено в config: if(this.config.autocolor) this.AutoColor(fId);
 	 */
-	ShowLevel(fId)
+	AutoColor(fId)
 	{
-		const level = this.timer_type[fId];
-		if(!level) return;
-		for(const l of Object.values(this.timer_type))
-			this.element.classList.toggle('lvl-' + l, l === level);
+		const type = this.timer_type[fId];
+		if(!type) return;
+		for(const t of Object.values(this.timer_type))
+			this.element.classList.toggle('color-' + t, t === type);
 	}
 
 	/**

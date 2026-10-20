@@ -29,7 +29,7 @@ export class MeterWidget extends UIWidget
 		const data = this.ReadValue(rx_data);
 		if(data.value === null) return;
 
-		if(this.config.level) this.ShowLevel(readNumberFromArray(rx_data, 0, 'uint8')); // только если включено в config
+		if(this.config.autocolor) this.AutoColor(readNumberFromArray(rx_data, 0, 'uint8')); // только если включено в config
 
 		this.refs.meter.value = data.value;
 		this.refs.meter.textContent = `[${this.config.min}__${data.value}__${this.config.max}]`;

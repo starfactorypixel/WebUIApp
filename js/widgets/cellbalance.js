@@ -2,40 +2,40 @@ import { UIWidget } from './base.js';
 import { readNumberFromArray } from '../parse.js';
 import { sprintfNamed, escapeHtml } from '../format.js';
 
-// Сводка по ячейкам АКБ: минимальное и максимальное напряжение, их номера и разница.
+// Баланс ячеек АКБ: максимальное и минимальное напряжение, номера этих ячеек и разница (дисбаланс).
 //
 // Пакет: { uint8 fId; uint16 val[2]; uint8 num[2]; }  (7 байт, little-endian)
 //   val[0] — минимальное напряжение ячейки, val[1] — максимальное (raw, делится на scale)
 //   num[0] — номер ячейки с минимумом,     num[1] — номер ячейки с максимумом
-//   fId 0x61/0x62/0x63 — уровень (норма/предупреждение/критично) по наихудшему значению;
-//   fId 0x65 — тот же пакет без уровня (ответ на чужой запрос): значения обновляем,
-//   уровень оставляем прежним.
+//   fId 0x61/0x62/0x63 — тип таймера (норма/предупреждение/критично) по наихудшему значению;
+//   fId 0x65 — тот же пакет без типа таймера (ответ на чужой запрос).
+//   При "autocolor": true виджет раскрашивается по типу таймера, 0x65 цвет не меняет.
 
-export class CellsWidget extends UIWidget
+export class CellBalanceWidget extends UIWidget
 {
-	static type = 'cells';
+	static type = 'cellbalance';
 
 	Render()
 	{
 		this.element.innerHTML =
-		`<div class="ui_root ui-cells">
-			<div class="ui_title ui-cells_title">${escapeHtml(this.config.name)}</div>
-			<div class="ui-cells_content">
-				<span class="ui-cells_sign">▲</span><span class="ui-cells_num ui-cells_max-num">-</span><span class="ui-cells_val ui-cells_max">-</span>
-				<span class="ui-cells_sign">▼</span><span class="ui-cells_num ui-cells_min-num">-</span><span class="ui-cells_val ui-cells_min">-</span>
-				<span class="ui-cells_sign">Δ</span><span class="ui-cells_delta">-</span>
+		`<div class="ui_root ui-cellbalance">
+			<div class="ui_title ui-cellbalance_title">${escapeHtml(this.config.name)}</div>
+			<div class="ui-cellbalance_content">
+				<span class="ui-cellbalance_sign">▲</span><span class="ui-cellbalance_num ui-cellbalance_max-num">-</span><span class="ui-cellbalance_val ui-cellbalance_max">-</span>
+				<span class="ui-cellbalance_sign">▼</span><span class="ui-cellbalance_num ui-cellbalance_min-num">-</span><span class="ui-cellbalance_val ui-cellbalance_min">-</span>
+				<span class="ui-cellbalance_sign">Δ</span><span class="ui-cellbalance_delta">-</span>
 			</div>
-			<div class="ui-cells_bar" hidden><div class="ui-cells_spread"></div></div>
+			<div class="ui-cellbalance_bar" hidden><div class="ui-cellbalance_spread"></div></div>
 		</div>`;
 
 		const q = sel => this.element.querySelector(sel);
-		this.refs.min = q('.ui-cells_min');
-		this.refs.max = q('.ui-cells_max');
-		this.refs.minNum = q('.ui-cells_min-num');
-		this.refs.maxNum = q('.ui-cells_max-num');
-		this.refs.delta = q('.ui-cells_delta');
-		this.refs.bar = q('.ui-cells_bar');
-		this.refs.spread = q('.ui-cells_spread');
+		this.refs.min = q('.ui-cellbalance_min');
+		this.refs.max = q('.ui-cellbalance_max');
+		this.refs.minNum = q('.ui-cellbalance_min-num');
+		this.refs.maxNum = q('.ui-cellbalance_max-num');
+		this.refs.delta = q('.ui-cellbalance_delta');
+		this.refs.bar = q('.ui-cellbalance_bar');
+		this.refs.spread = q('.ui-cellbalance_spread');
 
 		// Полоска «где min и max внутри рабочего диапазона» — только если задан range
 		if(Array.isArray(this.config.range)) this.refs.bar.hidden = false;
@@ -64,7 +64,7 @@ export class CellsWidget extends UIWidget
 		this.refs.maxNum.textContent = '#' + maxNum;
 		this.refs.delta.textContent = `${Math.round(deltaMv)} mV`;
 
-		this.ShowLevel(fId); // уровень приходит только с таймерными пакетами; 0x65 его не меняет
+		if(this.config.autocolor) this.AutoColor(fId); // раскраска по типу таймера — только если включена в config
 
 		if(!this.refs.bar.hidden)
 		{

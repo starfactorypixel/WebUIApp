@@ -11,7 +11,7 @@ import { MeterWidget } from './widgets/meter.js';
 import { StreamWidget } from './widgets/stream.js';
 import { RadioWidget } from './widgets/radio.js';
 import { RangeWidget } from './widgets/range.js';
-import { CellsWidget } from './widgets/cells.js';
+import { CellBalanceWidget } from './widgets/cellbalance.js';
 
 const WS_URL = 'ws://localhost:8080';
 
@@ -20,7 +20,7 @@ Control.timeout = 2000;
 
 // 1. Регистрируем все известные типы виджетов в одном месте.
 //    Чтобы добавить новый тип — создать файл widgets/xxx.js и добавить сюда одну строку.
-[ButtonWidget, ValueWidget, MeterWidget, StreamWidget, RadioWidget, RangeWidget, CellsWidget].forEach(registerWidget);
+[ButtonWidget, ValueWidget, MeterWidget, StreamWidget, RadioWidget, RangeWidget, CellBalanceWidget].forEach(registerWidget);
 
 // 2. Вкладки: виджеты живут только на открытой вкладке.
 const root = document.getElementById('myTabs');

@@ -67,7 +67,7 @@ export class ValueWidget extends UIWidget
 	{
 		const fId = readNumberFromArray(rx_data, 0, 'uint8');
 		const { value, value_raw } = this.ReadValue(rx_data);
-		if(this.config.level) this.ShowLevel(fId); // подсветка уровня — только если включена в config
+		if(this.config.autocolor) this.AutoColor(fId); // раскраска по типу таймера — только если включена в config
 		if(value === null) return;
 
 		const data = { value, value_raw, expr: this.#expr(value) };

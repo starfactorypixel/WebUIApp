@@ -184,8 +184,8 @@ body {
 	color: #ff6b6b;
 }
 
-/* Виджет cells: сводка по ячейкам АКБ */
-.ui-cells_content {
+/* Виджет cellbalance: баланс ячеек АКБ */
+.ui-cellbalance_content {
 	display: grid;
 	grid-template-columns: auto auto 1fr;
 	column-gap: 6px;
@@ -193,27 +193,27 @@ body {
 	font-variant-numeric: tabular-nums;
 }
 
-.ui-cells_sign {
+.ui-cellbalance_sign {
 	color: #888;
 }
 
-.ui-cells_num {
+.ui-cellbalance_num {
 	color: #666;
 	font-size: 12px;
 }
 
-.ui-cells_val {
+.ui-cellbalance_val {
 	text-align: right;
 	font-weight: 600;
 }
 
-.ui-cells_delta {
+.ui-cellbalance_delta {
 	grid-column: 2 / 4;
 	text-align: right;
 	font-weight: 600;
 }
 
-.ui-cells_bar {
+.ui-cellbalance_bar {
 	position: relative;
 	height: 6px;
 	margin-top: 6px;
@@ -221,7 +221,7 @@ body {
 	border-radius: 3px;
 }
 
-.ui-cells_spread {
+.ui-cellbalance_spread {
 	position: absolute;
 	top: 0;
 	bottom: 0;
@@ -229,9 +229,9 @@ body {
 	border-radius: 3px;
 }
 
-/* Уровень из fId 0x61/0x62/0x63 (UIWidget.ShowLevel): cells — всегда, value/meter — при "level": true */
-ui-element.lvl-normal   { box-shadow: inset 4px 0 #2e7d32; }
-ui-element.lvl-warning  { box-shadow: inset 4px 0 #ef6c00; }
-ui-element.lvl-critical { box-shadow: inset 4px 0 #c62828; background: #fff5f5; }
-ui-element.lvl-warning  .ui-cells_spread { background: #ef6c00; }
-ui-element.lvl-critical .ui-cells_spread { background: #c62828; }
+/* Раскраска по типу таймера fId 0x61/0x62/0x63 (UIWidget.AutoColor), включается "autocolor": true */
+ui-element.color-normal   { box-shadow: inset 4px 0 #2e7d32; }
+ui-element.color-warning  { box-shadow: inset 4px 0 #ef6c00; }
+ui-element.color-critical { box-shadow: inset 4px 0 #c62828; background: #fff5f5; }
+ui-element.color-warning  .ui-cellbalance_spread { background: #ef6c00; }
+ui-element.color-critical .ui-cellbalance_spread { background: #c62828; }
