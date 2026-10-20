@@ -61,6 +61,18 @@ export class UIWidget
 	}
 
 	/**
+	 * Уровень тревоги из fId (0x61/0x62/0x63, см. timer_type) → класс на <ui-element>:
+	 * lvl-normal / lvl-warning / lvl-critical. Остальные fId (например, 0x65) уровень не меняют.
+	 */
+	ShowLevel(fId)
+	{
+		const level = this.timer_type[fId];
+		if(!level) return;
+		for(const l of Object.values(this.timer_type))
+			this.element.classList.toggle('lvl-' + l, l === level);
+	}
+
+	/**
 	 * Прочитать число из пакета с учётом config.type / config.scale.
 	 * Если данных не хватает — { value: null, value_raw: null }.
 	 */

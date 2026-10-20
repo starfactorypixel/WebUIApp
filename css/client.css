@@ -229,7 +229,7 @@ body {
 	border-radius: 3px;
 }
 
-/* Уровень из fId 0x61/0x62/0x63 — полоса слева и цвет разброса */
+/* Уровень из fId 0x61/0x62/0x63 (UIWidget.ShowLevel): cells — всегда, value/meter — при "level": true */
 ui-element.lvl-normal   { box-shadow: inset 4px 0 #2e7d32; }
 ui-element.lvl-warning  { box-shadow: inset 4px 0 #ef6c00; }
 ui-element.lvl-critical { box-shadow: inset 4px 0 #c62828; background: #fff5f5; }

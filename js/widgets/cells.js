@@ -11,8 +11,6 @@ import { sprintfNamed, escapeHtml } from '../format.js';
 //   fId 0x65 — тот же пакет без уровня (ответ на чужой запрос): значения обновляем,
 //   уровень оставляем прежним.
 
-const LEVELS = { 0x61: 'normal', 0x62: 'warning', 0x63: 'critical' };
-
 export class CellsWidget extends UIWidget
 {
 	static type = 'cells';
@@ -23,8 +21,8 @@ export class CellsWidget extends UIWidget
 		`<div class="ui_root ui-cells">
 			<div class="ui_title ui-cells_title">${escapeHtml(this.config.name)}</div>
 			<div class="ui-cells_content">
-				<span class="ui-cells_sign">▼</span><span class="ui-cells_num ui-cells_min-num">-</span><span class="ui-cells_val ui-cells_min">-</span>
 				<span class="ui-cells_sign">▲</span><span class="ui-cells_num ui-cells_max-num">-</span><span class="ui-cells_val ui-cells_max">-</span>
+				<span class="ui-cells_sign">▼</span><span class="ui-cells_num ui-cells_min-num">-</span><span class="ui-cells_val ui-cells_min">-</span>
 				<span class="ui-cells_sign">Δ</span><span class="ui-cells_delta">-</span>
 			</div>
 			<div class="ui-cells_bar" hidden><div class="ui-cells_spread"></div></div>
@@ -66,13 +64,7 @@ export class CellsWidget extends UIWidget
 		this.refs.maxNum.textContent = '#' + maxNum;
 		this.refs.delta.textContent = `${Math.round(deltaMv)} mV`;
 
-		// Уровень приходит только с таймерными пакетами; 0x65 его не меняет
-		const level = LEVELS[fId];
-		if(level)
-		{
-			for(const l of Object.values(LEVELS))
-				this.element.classList.toggle('lvl-' + l, l === level);
-		}
+		this.ShowLevel(fId); // уровень приходит только с таймерными пакетами; 0x65 его не меняет
 
 		if(!this.refs.bar.hidden)
 		{
