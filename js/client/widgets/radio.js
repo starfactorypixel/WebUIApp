@@ -1,6 +1,6 @@
 import { UIWidget } from './base.js';
-import { parseValueList } from '../../parse.js';
-import { escapeHtml } from '../../format.js';
+import { parseValueList } from '../../utils/parse.js';
+import { escapeHtml } from '../../utils/format.js';
 import { Control } from '../control.js';
 
 let groupCounter = 0; // уникальное name для каждой группы радиокнопок

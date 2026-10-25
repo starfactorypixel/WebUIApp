@@ -1,6 +1,6 @@
 import { UIWidget } from './base.js';
-import { readNumberFromArray } from '../../parse.js';
-import { sprintfNamed, escapeHtml } from '../../format.js';
+import { readNumberFromArray } from '../../utils/parse.js';
+import { sprintfNamed, escapeHtml } from '../../utils/format.js';
 
 // Баланс ячеек АКБ: максимальное и минимальное напряжение, номера этих ячеек и разница (дисбаланс).
 //

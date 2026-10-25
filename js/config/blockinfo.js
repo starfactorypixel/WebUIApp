@@ -1,4 +1,4 @@
-import { Int2Hex, FastFormatMs } from '../format.js';
+import { Int2Hex, FastFormatMs } from '../utils/format.js';
 
 export class BlockInfo
 {

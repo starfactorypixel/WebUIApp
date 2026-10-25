@@ -20,9 +20,9 @@
 //   - на SET obj ответил другим значением;
 //   - у группы obj ответы разные (например, TOGGLE развёл их в разные состояния).
 
-import { readNumberFromArray, writeNumberToArray } from '../parse.js';
-import { WSSendCanMsg, WSSendRaw } from '../ws.js';
-import { log } from '../loghtml.js';
+import { readNumberFromArray, writeNumberToArray } from '../utils/parse.js';
+import { WSSendCanMsg, WSSendRaw } from '../utils/ws.js';
+import { log } from '../utils/loghtml.js';
 
 const FID_SET    = 0x01;
 const FID_TOGGLE = 0x02;

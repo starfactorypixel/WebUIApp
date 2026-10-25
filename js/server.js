@@ -6,7 +6,7 @@
 const config = require('../data/server.json');
 
 // Лог — первым: остальные модули пишут через него
-const Log = require('./logcmd.js');
+const Log = require('./utils/logcmd.js');
 Log.init(config.log);
 const log_serial = Log.source('serial');
 const log_ws = Log.source('ws');
@@ -15,7 +15,7 @@ console.error = console.log;
 
 const { SerialPort } = require('serialport');
 const WebSocket = require('ws');
-const L3Packet = require('./L3Packet.js');
+const L3Packet = require('./utils/L3Packet.js');
 
 const obj_serial = new SerialPort({ path: config.serial.port, baudRate: config.serial.speed, autoOpen: false });
 const obj_wss = new WebSocket.Server({ port: config.ws.port });

@@ -1,6 +1,6 @@
 import { UIWidget } from './base.js';
-import { sprintfNamed, escapeHtml } from '../../format.js';
-import { parseValueList } from '../../parse.js';
+import { sprintfNamed, escapeHtml } from '../../utils/format.js';
+import { parseValueList } from '../../utils/parse.js';
 import { Control } from '../control.js';
 
 export class ButtonWidget extends UIWidget

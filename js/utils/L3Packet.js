@@ -28,7 +28,7 @@ l3_fids.json — имя сообщения -> fId и, если известна,
 
 const crypto = require('crypto');
 const EventEmitter = require('events');
-const FIDS = require('../data/l3_fids.json');
+const FIDS = require('../../data/l3_fids.json');
 const log = require('./logcmd.js').source('l3');
 const log_serial = require('./logcmd.js').source('serial');
 

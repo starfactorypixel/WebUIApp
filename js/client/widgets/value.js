@@ -1,7 +1,7 @@
 import { UIWidget } from './base.js';
-import { readNumberFromArray } from '../../parse.js';
-import { sprintfNamed, escapeHtml } from '../../format.js';
-import { SimpleChart } from '../../simple-chart.js';
+import { readNumberFromArray } from '../../utils/parse.js';
+import { sprintfNamed, escapeHtml } from '../../utils/format.js';
+import { SimpleChart } from '../../utils/simple-chart.js';
 
 const EXPR_OPS = {
 	'<': (a, b) => a < b,

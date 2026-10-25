@@ -1,7 +1,7 @@
 import { UIWidget } from './base.js';
-import { readNumberFromArray } from '../../parse.js';
-import { sprintfNamed, escapeHtml } from '../../format.js';
-import { WSSendRaw } from '../../ws.js';
+import { readNumberFromArray } from '../../utils/parse.js';
+import { sprintfNamed, escapeHtml } from '../../utils/format.js';
+import { WSSendRaw } from '../../utils/ws.js';
 
 export class StreamWidget extends UIWidget
 {

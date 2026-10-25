@@ -1,9 +1,9 @@
 import { registerWidget } from './client/registry.js';
 import { initWidgets, deinitWidgets } from './client/dispatch.js';
-import { WSStart } from './ws.js';
-import { log } from './loghtml.js';
+import { WSStart } from './utils/ws.js';
+import { log } from './utils/loghtml.js';
 import './client/subscriptions.js'; // маршрутизация пакетов и повтор подписок после переподключения
-import { Tabs } from './tabs.js';
+import { Tabs } from './utils/tabs.js';
 import { Control } from './client/control.js';
 import { ButtonWidget } from './client/widgets/button.js';
 import { ValueWidget } from './client/widgets/value.js';

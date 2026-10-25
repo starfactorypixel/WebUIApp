@@ -14,8 +14,8 @@
 //   - соединение открылось (первый раз или после обрыва) → CANIDSub на все obj из списка;
 //   - нет соединения     → ничего не отправляется, всё уйдёт при открытии.
 
-import { WSEvents, WSSubscribe, WSUnsubscribe } from '../ws.js';
-import { log } from '../loghtml.js';
+import { WSEvents, WSSubscribe, WSUnsubscribe } from '../utils/ws.js';
+import { log } from '../utils/loghtml.js';
 
 const CHUNK_SIZE = 32;
 

@@ -1,6 +1,6 @@
-import { WSEvents, WSStart, WSSendCanMsg } from './ws.js';
-import { log } from './loghtml.js';
-import { readNumberFromArray, writeNumberToArray } from './parse.js'
+import { WSEvents, WSStart, WSSendCanMsg } from './utils/ws.js';
+import { log } from './utils/loghtml.js';
+import { readNumberFromArray, writeNumberToArray } from './utils/parse.js'
 import { BlockInfo } from './config/blockinfo.js';
 import blocks_json from '../data/blocks.json' with { type: 'json' };
 
