@@ -9,14 +9,14 @@
 //    после нажатия кнопки). Подписки при этом не теряются — их хранит
 //    client/subscriptions.js и сам повторяет после каждого переподключения.
 //
-// Модуль ничего не импортирует, поэтому циклических зависимостей больше нет.
+// Импортирует только лог, поэтому циклических зависимостей нет.
 
 import { log } from './loghtml.js';
 
 const RECONNECT_MIN_MS = 500;
 const RECONNECT_MAX_MS = 10000;
 
-/** Шина событий соединения: 'open', 'close', 'packet' (detail = { id, type, data }). */
+/** Шина событий: 'open', 'close', 'packet' {id, bytes}, 'packetRaw' {bytes}, 'response' {cmd, data}. */
 export const WSEvents = new EventTarget();
 
 let url = null;
@@ -133,17 +133,19 @@ function onMessage(message)
 	const d = msg?.data;
 	if(d === null || typeof d !== 'object') return; // ответ другого формата (ack и т.п.)
 
-	
-	if(msg.cmd == 'CanMsg')
+	switch(msg.cmd)
 	{
-		// Написано packet а на самом деле это CanMsg...
-		WSEvents.dispatchEvent(new CustomEvent('packet', { detail: { id: msg.data.id, bytes: msg.data.bytes } }));
-		return;
-	}
+		case 'CanMsg': // пакет объекта CAN: { id, bytes }
+			WSEvents.dispatchEvent(new CustomEvent('packet', { detail: { id: d.id, bytes: d.bytes } }));
+			break;
 
-	
-	WSEvents.dispatchEvent(new CustomEvent('packetRaw', { detail: { bytes: msg.data.bytes } }));
-	return;
+		case 'Raw': // прикладное сообщение L3 без разбора: { bytes }
+			WSEvents.dispatchEvent(new CustomEvent('packetRaw', { detail: { bytes: d.bytes } }));
+			break;
+
+		default: // ответы сервера (ScriptLoadResp и т.п.): detail = { cmd, data }
+			WSEvents.dispatchEvent(new CustomEvent('response', { detail: { cmd: msg.cmd, data: d } }));
+	}
 }
 
 /** Отправка JSON. Возвращает false, если соединения нет (сообщение отброшено). */
@@ -164,13 +166,26 @@ export function WSSendCanMsg(id, bytes)
 	return WSSend({ cmd: 'CanMsg', data: { id: id, bytes: bytes } });
 }
 
+/**
+ * Несколько команд объектам CAN одним WS-сообщением: [{ id, bytes }, ...].
+ * Сервер упакует их в минимум пакетов L3 (как подписку). Для групповых запросов.
+ */
+export function WSSendCanMsgBatch(msgs)
+{
+	if(!Array.isArray(msgs))
+		throw new TypeError('WSSendCanMsgBatch: msgs param must be an Array');
+	if(msgs.length === 0) return true;
+
+	return WSSend({ cmd: 'CanMsg', data: msgs });
+}
+
 export function WSSendRaw(bytes)
 {
 	if(!Array.isArray(bytes))
 		throw new TypeError('WSSendRaw: bytes param must be an Array');
 
 	const ok = WSSend({ cmd: 'Raw', data: { bytes: bytes } });
-	if(!ok) log.warn(`[WS] Нет соединения, команда для obj 0x${id.toString(16).toUpperCase().padStart(4, '0')} не отправлена`);
+	if(!ok) log.warn('[WS] Нет соединения, Raw-данные не отправлены');
 	return ok;
 }
 

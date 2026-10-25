@@ -92,7 +92,7 @@
 
 У `stream` формат данных другой: `[fId, number, value…]`.
 
-**Исходящие** (команды, тип пакета `0x15`):
+**Исходящие** (команды объекту: `{cmd: 'CanMsg', data: {id: obj, bytes}}`, функция `WSSendCanMsg(id, bytes)`):
 
 | fId | Команда | Данные |
 |---|---|---|
@@ -402,10 +402,10 @@ struct { uint8_t fId; uint16_t val[2]; uint8_t num[2]; };
 
 ## Лог
 
-Модуль `js/loghtml.js` — общий лог для всей системы. Строка выводится на страницу (в `<div id="log">`, если он есть) и в консоль браузера.
+Модуль `js/utils/loghtml.js` — общий лог браузерной части для всей системы. Строка выводится на страницу (в `<div id="log">`, если он есть) и в консоль браузера.
 
 ```js
-import { log } from '../loghtml.js';
+import { log } from '../../utils/loghtml.js';   // путь от js/client/widgets/
 
 log.info('[WS] Соединение установлено');
 log.warn('[Газ М1+М2] SET 700: 0x0104=700, 0x0105=нет ответа');
@@ -435,13 +435,13 @@ log.error('[Виджеты] Некорректный JSON в config', el, err);
 | `WS_URL` | `ws://localhost:8080` | Адрес сервера. |
 | `Control.timeout` | `2000` | Время ожидания ответа на команду, мс. У отдельного виджета переопределяется через `config.timeout`. |
 
-В `js/ws.js` настраиваются паузы переподключения: `RECONNECT_MIN_MS` = 500 и `RECONNECT_MAX_MS` = 10000. Пауза удваивается после каждой неудачной попытки.
+В `js/utils/ws.js` настраиваются паузы переподключения: `RECONNECT_MIN_MS` = 500 и `RECONNECT_MAX_MS` = 10000. Пауза удваивается после каждой неудачной попытки.
 
 ---
 
 ## Свой виджет
 
-1. Создать `js/widgets/xxx.js` с классом-наследником `UIWidget`, указать в нём `static type = 'xxx'`, а при поддержке нескольких obj — `static multiObj = true`.
+1. Создать `js/client/widgets/xxx.js` с классом-наследником `UIWidget`, указать в нём `static type = 'xxx'`, а при поддержке нескольких obj — `static multiObj = true`.
 2. В `Render()` построить HTML и явно подписаться: `this.Subscribe()` подписывает на свой obj с обработчиком `Update(data, id)`, `this.Subscribe(id, handler)` — на любой obj со своим обработчиком.
 3. Переопределять `Destroy()` нужно, только если есть свои ресурсы. Обязательно вызвать `super.Destroy()` — он снимает все подписки.
 4. Для управляемых виджетов использовать `Control` из `js/client/control.js`, как в `button.js`, `radio.js` и `range.js`. Шаблон:

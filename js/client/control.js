@@ -21,7 +21,7 @@
 //   - у группы obj ответы разные (например, TOGGLE развёл их в разные состояния).
 
 import { readNumberFromArray, writeNumberToArray } from '../utils/parse.js';
-import { WSSendCanMsg, WSSendRaw } from '../utils/ws.js';
+import { WSSendCanMsg } from '../utils/ws.js';
 import { log } from '../utils/loghtml.js';
 
 const FID_SET    = 0x01;

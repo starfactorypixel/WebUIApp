@@ -1,64 +1,188 @@
 body {
-	font-family: Arial, sans-serif;
+	font-family: system-ui, sans-serif;
+	margin: 20px;
+	background: #f4f5f7;
 }
 
-.param-obj
-{
+/* ---- Карточки блоков (blockinfo.js) ---- */
+
+#blocks {
 	display: flex;
-	gap: 16px;
+	flex-wrap: wrap;
+	gap: 10px;
+}
+
+#blocks:empty::before {
+	content: 'Блоки не найдены: ждём пакеты информации о блоках…';
+	color: #888;
+}
+
+.block-card {
+	width: 220px;
+	padding: 10px;
+	background: #fff;
+	border: 1px solid #d0d4da;
+	border-radius: 6px;
+	cursor: pointer;
+}
+
+.block-card:hover {
+	border-color: #2f6fed;
+}
+
+.block-card.is-selected {
+	border-color: #2f6fed;
+	box-shadow: 0 0 0 2px #2f6fed;
+}
+
+.block-card.has-errors {
+	background: #fff5f5;
+}
+
+.block-card_head {
+	text-align: center;
+	padding-bottom: 6px;
+	margin-bottom: 6px;
+	border-bottom: 1px solid #e3e5e8;
+}
+
+.block-card_id {
+	font-size: 22px;
+	font-weight: 600;
+}
+
+.block-card_name {
+	font-weight: 600;
+}
+
+.block-card_name .is-unknown {
+	color: #c62828;
+	font-weight: normal;
+}
+
+.block-card_sn {
+	font-size: 12px;
+	color: #666;
+	font-variant-numeric: tabular-nums;
+}
+
+.block-card_rows {
+	display: grid;
+	grid-template-columns: auto 1fr;
+	column-gap: 8px;
+	font-size: 13px;
+}
+
+.block-card_rows span:nth-child(odd) {
+	color: #666;
+}
+
+.block-card_rows span:nth-child(even) {
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+}
+
+/* ---- Настройки блока (blockparams.js) ---- */
+
+#params:not(:empty) {
+	margin-top: 16px;
+	background: #fff;
+	border: 1px solid #d0d4da;
+	border-radius: 6px;
+}
+
+.params_head {
+	display: flex;
+	justify-content: space-between;
 	align-items: center;
-	padding: 6px;
-	border: 1px solid #000000;
-	background-color: rgba(193, 255, 197, 0.9);
+	gap: 16px;
+	padding: 10px 12px;
+	background: #e9ecf0;
+	border-bottom: 1px solid #d0d4da;
 }
 
-.param-obj div
-{
-	/*border: 1px solid #000000;*/
+.params_title {
+	font-size: 18px;
+	font-weight: 600;
 }
 
-.param_id
-{
-	width: 26px;
+.params_desc {
+	font-size: 12px;
+	color: #555;
+}
+
+.params_empty {
+	padding: 12px;
+	color: #888;
+}
+
+.param {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	padding: 6px 12px;
+	border-bottom: 1px solid #eef0f2;
+}
+
+.param_id {
+	width: 32px;
 	text-align: right;
 	font-size: 20px;
-	font-weight: bold;
+	font-weight: 600;
 }
-.param_namedisc
-{
+
+.param_text {
 	width: 350px;
 }
-.param_name
-{
-	font-size: 16px;
-	font-weight: bold;
+
+.param_name {
+	font-weight: 600;
 }
-.param_disc
-{
+
+.param_desc {
 	font-size: 12px;
+	color: #555;
 }
-.param_field
-{
-	width: 200px;
-}
-.param_field input
-{
+
+.param_field input {
 	width: 150px;
 	padding: 4px;
 	-moz-appearance: textfield;
 }
-.param_ctrl
-{
-	
+
+/* Ждём ответ / не дождались */
+.param.is-pending input {
+	outline: 2px dashed #2f6fed;
 }
 
-.device-block
-{
-	display: inline-block;
-	background-color: aqua;
-	margin: 10px;
+.param.is-failed input {
+	outline: 2px solid #d32f2f;
+}
+
+/* ---- Лог (loghtml.js) ---- */
+
+#log {
+	margin-top: 16px;
+	background: #222;
+	color: #9f9;
 	padding: 10px;
-	border: 1px solid #aaa;
+	font: 12px monospace;
+	height: 160px;
+	overflow: auto;
 	border-radius: 6px;
-	width: 220px;
+}
+
+#log .log_warn {
+	color: #ffd54f;
+}
+
+#log .log_error {
+	color: #ff6b6b;
+}
+
+/* Нет связи с сервером */
+html.ws-offline #blocks,
+html.ws-offline #params {
+	opacity: 0.5;
+	filter: grayscale(1);
 }

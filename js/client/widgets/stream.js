@@ -1,7 +1,7 @@
 import { UIWidget } from './base.js';
 import { readNumberFromArray } from '../../utils/parse.js';
 import { sprintfNamed, escapeHtml } from '../../utils/format.js';
-import { WSSendRaw } from '../../utils/ws.js';
+import { WSSendCanMsg } from '../../utils/ws.js';
 
 export class StreamWidget extends UIWidget
 {
@@ -24,7 +24,7 @@ export class StreamWidget extends UIWidget
 		const button = this.element.querySelector('.ui-stream_control button');
 		button.addEventListener('click', () =>
 		{
-			WSSendRaw(0x15, this.id, [0x11]);
+			WSSendCanMsg(this.id, [0x11]);
 		});
 
 		this.Subscribe();

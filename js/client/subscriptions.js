@@ -3,10 +3,10 @@
 //   const off = subscribe(0x0110, (data, id) => { ... });
 //   off(); // отписаться
 //
-// ВАЖНО: серверу запросы уходят ТОЛЬКО пачками, не больше CHUNK_SIZE id в сообщении.
 // subscribe()/unsubscribe() ничего не отправляют сами — они кладут id в очередь,
-// а flush() отправляет всю очередь в конце текущей задачи. Открытие вкладки
-// создаёт все её виджеты за одну задачу, поэтому вся вкладка уходит одной пачкой.
+// а flush() отправляет всю очередь в конце текущей задачи ОДНИМ WS-сообщением.
+// Открытие вкладки создаёт все её виджеты за одну задачу, поэтому вся вкладка уходит одним сообщением.
+// Деление на пакеты по размеру (протокол L3 с ESP) делает сервер, здесь его нет.
 //
 // Правила:
 //   - подписались        → id в очередь CANIDSub (сервер в ответ пришлёт текущее состояние obj);
@@ -16,8 +16,6 @@
 
 import { WSEvents, WSSubscribe, WSUnsubscribe } from '../utils/ws.js';
 import { log } from '../utils/loghtml.js';
-
-const CHUNK_SIZE = 32;
 
 const handlers = new Map(); // obj id -> [функция, функция, ...]
 
@@ -67,20 +65,15 @@ function flush()
 	queueUnsub.clear();
 	queueSub.clear();
 
-	sendChunks(WSUnsubscribe, unsub);
-	sendChunks(WSSubscribe, sub);
-}
-
-function sendChunks(send, ids)
-{
-	for(let i = 0; i < ids.length; i += CHUNK_SIZE)
-		send(ids.slice(i, i + CHUNK_SIZE)); // нет связи — не уйдёт, при открытии подпишемся на всё
+	// Нет связи — не уйдёт; при открытии подпишемся на всё заново
+	if(unsub.length > 0) WSUnsubscribe(unsub);
+	if(sub.length > 0) WSSubscribe(sub);
 }
 
 // Соединение открылось — сервер ничего не помнит, подписываемся на всё заново.
 WSEvents.addEventListener('open', () =>
 {
-	sendChunks(WSSubscribe, [...handlers.keys()]);
+	if(handlers.size > 0) WSSubscribe([...handlers.keys()]);
 });
 
 // Пришёл пакет — раздаём всем подписанным на этот obj.

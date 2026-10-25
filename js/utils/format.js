@@ -76,21 +76,20 @@ export function sprintfNamed(str, data)
 	});
 }
 
+/** Число → "0x00AB" (pad — минимум hex-цифр). */
 export function Int2Hex(num, pad)
 {
-	return '0x' + num.toString(16).padStart(pad, "0").toUpperCase();
+	return '0x' + num.toString(16).toUpperCase().padStart(pad, '0');
 }
 
-export function FastFormatMs(ms) {
-  // Битовое смещение ~~ работает как сверхбыстрый Math.floor
-  const hr = ~~(ms / 3600000);
-  const min = ~~((ms % 3600000) / 60000);
-  const sec = ~~((ms % 60000) / 1000);
-  const msec = ms % 1000;
+/** Миллисекунды → "ЧЧ:ММ:СС.ммм" (часы не ограничены 24). */
+export function FastFormatMs(ms)
+{
+	const hr = Math.floor(ms / 3600000);
+	const min = Math.floor((ms % 3600000) / 60000);
+	const sec = Math.floor((ms % 60000) / 1000);
+	const msec = ms % 1000;
 
-  // Быстрая ручная склейка строк без массивов
-  return (hr < 10 ? '0' + hr : hr) + ':' +
-         (min < 10 ? '0' + min : min) + ':' +
-         (sec < 10 ? '0' + sec : sec) + '.' +
-         (msec < 10 ? '00' + msec : msec < 100 ? '0' + msec : msec);
+	const p = (n, w) => String(n).padStart(w, '0');
+	return p(hr, 2) + ':' + p(min, 2) + ':' + p(sec, 2) + '.' + p(msec, 3);
 }

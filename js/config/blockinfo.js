@@ -1,130 +1,146 @@
-import { Int2Hex, FastFormatMs } from '../utils/format.js';
+// Карточки блоков, найденных в системе.
+//
+// Каждый блок раз в несколько секунд присылает пакет с информацией о себе (fId 0x0A, приходит как Raw).
+// На каждый baseID рисуется карточка, при повторных пакетах она обновляется.
+// Клик по карточке → onSelect(info) — открыть настройки этого блока.
+//
+// Пакет (little-endian, 32 байта):
+//   [0]     fId 0x0A
+//   [1..2]  baseID u16        [3] hw_type   [4] hw_ver   [5] sw_ver   [6] can_ver
+//   [7..14] SN, 8 байт        [15..21] features, 7 байт
+//   [22..25] uptime u32, мс   [26..27] voltage u16, мВ  [28..29] current u16, мА
+//   [30] temperature i8, °C   [31] error_flags
+
+import { Int2Hex, FastFormatMs, escapeHtml } from '../utils/format.js';
+
+export const FID_BLOCK_INFO = 0x0A;
+const PACKET_LEN = 32;
 
 export class BlockInfo
 {
-	#blocksMap = new Map();
-	#blocks = [];
-	
-	constructor(blocks)
+	#container;
+	#blocks;		// описание типов из blocks.json
+	#onSelect;
+	#cards = new Map();	// baseID -> { el, info }
+
+	/**
+	 * @param {HTMLElement} container   куда добавлять карточки
+	 * @param {Array}       blocks      blocks.json → blocks
+	 * @param {Function}    onSelect    (info) => void — клик по карточке
+	 */
+	constructor(container, blocks, onSelect)
 	{
+		this.#container = container;
 		this.#blocks = blocks;
-	}
-	
-	processPacket(packetBytes)
-	{
-		const parsed = this.#parsePacket(packetBytes);
-		this.#createOrUpdateBlock(parsed);
+		this.#onSelect = onSelect;
 	}
 
-	#parsePacket(byteArray)
+	// Пакет 0x0A → карточка
+	processPacket(bytes)
 	{
-		const data = byteArray instanceof Uint8Array
-			? byteArray
-			: new Uint8Array(byteArray);
-
-		const view = new DataView(data.buffer);
-
-		let offset = 1; // старт со смещения 1
-
-		const baseID = view.getUint16(offset, true);
-		offset += 2;
-
-		const hw_type = view.getUint8(offset++);
-		const hw_ver = view.getUint8(offset++);
-
-		const sw_ver = view.getUint8(offset++);
-		const can_ver = view.getUint8(offset++);
-
-		const sn = [];
-		for(let i = 0; i < 8; i++)
+		const info = this.#parse(bytes);
+		if(info === null)
 		{
-			sn.push(view.getUint8(offset++));
+			console.warn('[Блоки] Короткий пакет информации о блоке', bytes);
+			return;
 		}
 
-		const features = [];
-		for(let i = 0; i < 7; i++)
+		let card = this.#cards.get(info.baseID);
+		if(!card)
 		{
-			features.push(view.getUint8(offset++));
+			card = this.#createCard(info.baseID);
+			this.#cards.set(info.baseID, card);
 		}
+		card.info = info;
+		this.#updateCard(card.el, info);
+	}
 
-		const uptime = view.getUint32(offset, true);
-		offset += 4;
+	// Подсветить выбранную карточку
+	select(baseID)
+	{
+		for(const [id, card] of this.#cards)
+			card.el.classList.toggle('is-selected', id === baseID);
+	}
 
-		const voltage = view.getUint16(offset, true);
-		offset += 2;
+	// Описание типа блока из blocks.json (или undefined)
+	findType(hw_type)
+	{
+		return this.#blocks.find(b => b.type === hw_type);
+	}
 
-		const current = view.getUint16(offset, true);
-		offset += 2;
+	#parse(bytes)
+	{
+		if(!bytes || bytes.length < PACKET_LEN) return null;
 
-		const temperature = view.getInt8(offset++);
-		const error_flags = view.getUint8(offset++);
-
-
+		const u8 = Uint8Array.from(bytes);
+		const view = new DataView(u8.buffer);
+		const hex = (from, len) => Array.from(u8.subarray(from, from + len), v => v.toString(16).padStart(2, '0')).join(':');
 
 		return {
-			baseID,
-			hw_type,
-			hw_ver,
-			sw_ver,
-			can_ver,
-			sn: sn.map(v => v.toString(16).padStart(2, "0")).join(":"),
-			features: features.map(v => v.toString(16).padStart(2, "0")).join(":"),
-			uptime,
-			voltage,
-			current,
-			temperature,
-			error_flags,
+			baseID:      view.getUint16(1, true),
+			hw_type:     view.getUint8(3),
+			hw_ver:      view.getUint8(4),
+			sw_ver:      view.getUint8(5),
+			can_ver:     view.getUint8(6),
+			sn:          hex(7, 8),
+			features:    hex(15, 7),
+			uptime:      view.getUint32(22, true),
+			voltage:     view.getUint16(26, true),
+			current:     view.getUint16(28, true),
+			temperature: view.getInt8(30),
+			error_flags: view.getUint8(31),
 		};
 	}
 
-	#createOrUpdateBlock(info)
+	#createCard(baseID)
 	{
-		let block = this.#blocksMap.get(info.baseID);
+		const el = document.createElement('div');
+		el.className = 'block-card';
+		el.title = 'Открыть настройки блока';
+		el.innerHTML =
+		`<div class="block-card_head">
+			<div class="block-card_id"></div>
+			<div class="block-card_name"></div>
+			<div class="block-card_sn"></div>
+		</div>
+		<div class="block-card_rows">
+			<span>HW</span>          <span class="f-hw"></span>
+			<span>SW / CAN</span>    <span class="f-sw"></span>
+			<span>Uptime</span>      <span class="f-uptime"></span>
+			<span>Напряжение</span>  <span class="f-voltage"></span>
+			<span>Ток</span>         <span class="f-current"></span>
+			<span>Температура</span> <span class="f-temp"></span>
+			<span>Ошибки</span>      <span class="f-errors"></span>
+		</div>`;
 
-		if(!block) {
-			block = document.createElement("div");
-			block.className = "device-block";
-			block.dataset.baseid = info.baseID;
+		el.addEventListener('click', () =>
+		{
+			const card = this.#cards.get(baseID);
+			this.#onSelect(card.info);
+		});
 
-			block.innerHTML = `
-				<div style="text-align: center;">
-					<span class="baseID" style="font-size: 22px;"></span> <br>
-					<span class="sn"></span>
-				</div>
-				<hr>
-				<div>HW Type: <span class="hw_type"></span></div>
-				<div>HW Ver: <span class="hw_ver"></span></div>
-				<div>SW Ver: <span class="sw_ver"></span></div>
-				<div>CAN Ver: <span class="can_ver"></span></div>
-				<div>Uptime: <span class="uptime"></span></div>
-				<div>Voltage: <span class="voltage"></span></div>
-				<div>Current: <span class="current"></span></div>
-				<div>Temperature: <span class="temperature"></span></div>
-				<div>Error Flags: <span class="error_flags"></span></div>
-			`;
-
-			document
-				.getElementById("blocksContainer")
-				.appendChild(block);
-
-			this.#blocksMap.set(info.baseID, block);
-		}
-
-		block.querySelector(".baseID").textContent = Int2Hex(info.baseID, 4);
-		block.querySelector(".hw_type").textContent = info.hw_type + ' (' + this.#findInJson(this.#blocks, 'type', info.hw_type).name + ')';
-		block.querySelector(".hw_ver").textContent = info.hw_ver;
-		block.querySelector(".sw_ver").textContent = info.sw_ver;
-		block.querySelector(".can_ver").textContent = info.can_ver;
-		block.querySelector(".uptime").textContent = FastFormatMs(info.uptime) + " ms";
-		block.querySelector(".voltage").textContent = info.voltage + " mV";
-		block.querySelector(".current").textContent = info.current + " mA";
-		block.querySelector(".temperature").textContent = info.temperature + " °C";
-		block.querySelector(".error_flags").textContent = "0b" + info.error_flags.toString(2).padStart(8, "0");
-		block.querySelector(".sn").textContent = info.sn;
+		this.#container.appendChild(el);
+		return { el, info: null };
 	}
 
-#findInJson(data, key, value) {
-  if (!data) return undefined;
-  return Object.values(data).find(item => item && item[key] === value);
-}
+	#updateCard(el, info)
+	{
+		const type = this.findType(info.hw_type);
+		const q = sel => el.querySelector(sel);
+
+		q('.block-card_id').textContent = Int2Hex(info.baseID, 4);
+		q('.block-card_name').innerHTML = type
+			? escapeHtml(type.name)
+			: `<span class="is-unknown">Тип ${info.hw_type}: нет в blocks.json</span>`;
+		q('.block-card_sn').textContent = info.sn;
+		q('.f-hw').textContent = `тип ${info.hw_type}, вер. ${info.hw_ver}`;
+		q('.f-sw').textContent = `${info.sw_ver} / ${info.can_ver}`;
+		q('.f-uptime').textContent = FastFormatMs(info.uptime);
+		q('.f-voltage').textContent = info.voltage + ' мВ';
+		q('.f-current').textContent = info.current + ' мА';
+		q('.f-temp').textContent = info.temperature + ' °C';
+		q('.f-errors').textContent = '0b' + info.error_flags.toString(2).padStart(8, '0');
+
+		el.classList.toggle('has-errors', info.error_flags !== 0);
+	}
 }
