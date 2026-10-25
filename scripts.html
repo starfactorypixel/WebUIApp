@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+	<meta charset="UTF-8">
+	<title>Скрипты ESP32</title>
+	<link rel="stylesheet" href="css/common.css">
+	<link rel="stylesheet" href="css/scripts.css">
+</head>
+<body>
+
+<h1>Скрипты ESP32 (DrakeScript)</h1>
+
+<div class="scripts">
+
+	<!-- Скрипты в ESP: клик по строке — открыть, галочка — включить/отключить -->
+	<div class="panel script_list">
+		<div class="panel_head">
+			<div>
+				<div class="panel_title">В ESP</div>
+				<div class="panel_desc" id="list_info">—</div>
+			</div>
+			<button data-cmd="list" title="Обновить список">⟳</button>
+		</div>
+		<table>
+			<thead><tr><th>ID</th><th>Байт</th><th title="Включён">Вкл</th></tr></thead>
+			<tbody id="list_body"></tbody>
+		</table>
+	</div>
+
+	<!-- Редактор -->
+	<div class="panel script_editor">
+		<div class="panel_head">
+			<div class="script_id">
+				<label for="script_id">ID</label>
+				<input id="script_id" placeholder="012" maxlength="3" pattern="[0-9a-fA-F]{1,3}" title="ID скрипта, hex 0–7FF" spellcheck="false">
+				<button data-cmd="load" title="Прочитать скрипт из ESP">📥 Прочитать</button>
+				<button data-cmd="save" title="Записать скрипт в ESP">💾 Записать</button>
+				<button data-cmd="delete" title="Удалить скрипт в ESP">🗑 Удалить</button>
+			</div>
+			<button data-cmd="reload" title="ESP перечитает все скрипты из флеш-памяти">⟳ Перезагрузить все скрипты</button>
+		</div>
+
+		<textarea id="script_text" rows="20" spellcheck="false" placeholder="Байты скрипта в hex. Комментарии: // … /* … */ # … ; …"></textarea>
+
+		<div class="script_bottom">
+			<div id="script_info"></div>
+			<div>
+				<button data-cmd="open" title="Открыть файл .drs">📂 Открыть файл</button>
+				<button data-cmd="download" title="Сохранить текст в файл .drs">⤓ Сохранить в файл</button>
+				<button data-cmd="format" title="Разобрать байты: имена команд и аргументы в комментариях">Разобрать</button>
+				<button data-cmd="clear">Очистить</button>
+				<input type="file" id="script_file" accept=".drs,.txt" hidden>
+			</div>
+		</div>
+	</div>
+
+</div>
+
+<div id="log"></div>
+
+<script type="module" src="js/app-scripts.js"></script>
+
+</body>
+</html>

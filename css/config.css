@@ -1,8 +1,3 @@
-body {
-	font-family: system-ui, sans-serif;
-	margin: 20px;
-	background: #f4f5f7;
-}
 
 /* ---- Карточки блоков (blockinfo.js) ---- */
 
@@ -82,33 +77,10 @@ body {
 	font-variant-numeric: tabular-nums;
 }
 
-/* ---- Настройки блока (blockparams.js) ---- */
+/* ---- Настройки блока (blockparams.js), панель — .panel из common.css ---- */
 
 #params:not(:empty) {
 	margin-top: 16px;
-	background: #fff;
-	border: 1px solid #d0d4da;
-	border-radius: 6px;
-}
-
-.params_head {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	gap: 16px;
-	padding: 10px 12px;
-	background: #e9ecf0;
-	border-bottom: 1px solid #d0d4da;
-}
-
-.params_title {
-	font-size: 18px;
-	font-weight: 600;
-}
-
-.params_desc {
-	font-size: 12px;
-	color: #555;
 }
 
 .params_empty {
@@ -157,27 +129,6 @@ body {
 
 .param.is-failed input {
 	outline: 2px solid #d32f2f;
-}
-
-/* ---- Лог (loghtml.js) ---- */
-
-#log {
-	margin-top: 16px;
-	background: #222;
-	color: #9f9;
-	padding: 10px;
-	font: 12px monospace;
-	height: 160px;
-	overflow: auto;
-	border-radius: 6px;
-}
-
-#log .log_warn {
-	color: #ffd54f;
-}
-
-#log .log_error {
-	color: #ff6b6b;
 }
 
 /* Нет связи с сервером */

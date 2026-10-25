@@ -26,10 +26,13 @@ console.error = console.log;
 const { SerialPort } = require('serialport');
 const WebSocket = require('ws');
 const L3Packet = require('./utils/L3Packet.js');
+const { Scripts } = require('./server/scripts.js');
 
 const obj_serial = new SerialPort({ path: config.serial.port, baudRate: config.serial.speed, autoOpen: false });
 const obj_wss = new WebSocket.Server({ port: config.ws.port });
 const obj_l3 = new L3Packet(config, obj_serial);
+const log_scripts = Log.source('scripts');
+const scripts = new Scripts(obj_l3, log_scripts);
 
 const SERIAL_REOPEN_MS = 1000;	// повтор открытия порта
 
@@ -37,12 +40,10 @@ const SERIAL_REOPEN_MS = 1000;	// повтор открытия порта
 const CANSUB_HEADER_LEN = 2;	// fId + count
 const CANSUB_ID_LEN = 2;		// id u16
 const CANSUB_UNSUB_BIT = 0x8000;
+const CANSUB_COUNT_MAX = 0xFF;	// count — один байт
 
 // Сообщение CanMsg L3: [fId][id u16][len][bytes]
 const CANMSG_HEADER_LEN = 4;	// fId + id u16 + len
-
-// Сообщение скрипта L3: [fId][0x04][id u16][idx] + чанк
-const SCRIPT_CHUNK_HEADER_LEN = 5;
 
 
 // ================================================================ UART
@@ -143,30 +144,13 @@ function HandleWSCommand(ws, msg)
 			obj_l3.send(Buffer.from(msg.data.bytes));
 			break;
 
-		// Скрипты ESP
-		case 'ScriptLoad':
-			script.mode = 'download';
-			script.id = msg.data.id;
-			SendScript([0x06, ...writeULE(msg.data.id, 2)]);
-			break;
-
-		case 'ScriptSave':
-			script.mode = 'upload';
-			script.id = msg.data.id;
-			script.data = msg.data.data;
-			SendScript([0x03, ...writeULE(msg.data.id, 2), ...writeULE(msg.data.data.length, 2)]);
-			break;
-
-		case 'ScriptDelete':
-			script.mode = 'delete';
-			script.id = msg.data.id;
-			SendScript([0x02, ...writeULE(msg.data.id, 2)]);
-			break;
-
-		case 'ScriptReload':
-			script.mode = 'reload';
-			SendScript([0x08]);
-			break;
+		// Скрипты ESP (SCRIPTS_PROTOCOL.md): ответ { cmd: cmd + 'Resp', data } — только этому клиенту
+		case 'ScriptLoad':   ScriptOp(ws, msg, (progress) => scripts.Load(msg.data.id, progress)); break;
+		case 'ScriptSave':   ScriptOp(ws, msg, (progress) => scripts.Save(msg.data.id, msg.data.data, progress)); break;
+		case 'ScriptDelete': ScriptOp(ws, msg, () => scripts.Delete(msg.data.id)); break;
+		case 'ScriptReload': ScriptOp(ws, msg, () => scripts.Reload()); break;
+		case 'ScriptList':   ScriptOp(ws, msg, () => scripts.List()); break;
+		case 'ScriptEnable': ScriptOp(ws, msg, () => scripts.Enable(msg.data.id, msg.data.on)); break;
 
 		default:
 			log_ws('Неизвестная команда: ' + msg.cmd);
@@ -243,7 +227,7 @@ function SendCanSub(ids, unsub)
 {
 	if(ids.length === 0) return;
 
-	const per_msg = Math.floor((L3Packet.DATA_MAX - CANSUB_HEADER_LEN) / CANSUB_ID_LEN);
+	const per_msg = Math.min(CANSUB_COUNT_MAX, Math.floor((L3Packet.DATA_MAX - CANSUB_HEADER_LEN) / CANSUB_ID_LEN));
 
 	for(let i = 0; i < ids.length; i += per_msg)
 	{
@@ -282,7 +266,7 @@ obj_l3.on('message', (fId, data) =>
 {
 	if(fId === obj_l3.fid.Script)
 	{
-		ScriptProc(data.subarray(1));
+		scripts.onMessage(data);
 		return;
 	}
 
@@ -304,139 +288,16 @@ obj_l3.on('message', (fId, data) =>
 
 // ================================================================ Скрипты
 
-let script =
+// Операция со скриптом: результат или ошибка — клиенту, который спросил; прогресс — ему же
+function ScriptOp(ws, msg, op)
 {
-	mode: 'idle',	// текущая операция со скриптом
-	id: 0,			// ID скрипта
-	length: 0,		// длина скрипта, байт
-	data: [],		// тело скрипта
-	chunk_size: 0,	// размер чанка при передаче, байт
-	chunk_nums: 0,	// количество чанков
-};
+	const progress = (done, total) => SendWS(ws, { cmd: 'ScriptProgress', data: { done, total } });
 
-function SendScript(bytes)
-{
-	obj_l3.add([obj_l3.fid.Script, ...bytes]);
-	obj_l3.commit();
-}
-
-// data — сообщение скрипта без fId: data[0] — cmd
-function ScriptProc(data)
-{
-	const rx_cmd = data[0];
-	switch(script.mode)
-	{
-		case 'download':
+	op(progress)
+		.then((result) => SendWS(ws, { cmd: msg.cmd + 'Resp', data: result }))
+		.catch((err) =>
 		{
-			if(rx_cmd === 0x86)
-			{
-				const rx_id = readULE(data, 1, 2);
-				if(script.id !== rx_id) break;
-
-				script.length = readULE(data, 3, 2);
-				script.data = [];
-				script.chunk_size = data[5];
-				script.chunk_nums = data[6];
-
-				SendScript([0x07, ...writeULE(rx_id, 2), 0]);	// первый чанк
-			}
-
-			if(rx_cmd === 0x87)
-			{
-				const rx_id = readULE(data, 1, 2);
-				if(script.id !== rx_id) break;
-
-				const chunk_next = data[3] + 1;
-				script.data.push(...data.slice(4));
-
-				if(script.chunk_nums > chunk_next)
-					SendScript([0x07, ...writeULE(rx_id, 2), chunk_next]);	// следующий чанк
-				else
-					SendWSToAll({ cmd: 'ScriptLoadResp', data: { id: rx_id, data: script.data } });
-			}
-			break;
-		}
-
-		case 'upload':
-		{
-			if(rx_cmd === 0x83)
-			{
-				const rx_id = readULE(data, 1, 2);
-				if(script.id !== rx_id) break;
-
-				const chunk_size = data[5];
-				const chunk_max = L3Packet.DATA_MAX - SCRIPT_CHUNK_HEADER_LEN;
-				if(chunk_size > chunk_max)
-				{
-					console.log('Скрипт: ESP задал чанк ' + chunk_size + ' байт, в пакет помещается ' + chunk_max);
-					break;
-				}
-
-				script.length = readULE(data, 3, 2);
-				script.chunk_size = chunk_size;
-				script.chunk_nums = data[6];
-
-				SendScript([0x04, ...writeULE(rx_id, 2), 0, ...script.data.slice(0, chunk_size)]);	// первый чанк
-			}
-
-			if(rx_cmd === 0x84)
-			{
-				const rx_id = readULE(data, 1, 2);
-				const rx_state = toInt8(data[4]);
-				const chunk_next = data[3] + 1;
-
-				if(script.id === rx_id && rx_state === 1)
-				{
-					const from = script.chunk_size * chunk_next;
-					SendScript([0x04, ...writeULE(rx_id, 2), chunk_next, ...script.data.slice(from, from + script.chunk_size)]);	// следующий чанк
-				}
-
-				if(rx_state === 2)
-					SendWSToAll({ cmd: 'ScriptSaveResp', data: { id: rx_id } });
-			}
-			break;
-		}
-
-		case 'delete':
-		{
-			if(rx_cmd === 0x82)
-			{
-				const rx_id = readULE(data, 1, 2);
-				if(script.id === rx_id)
-					SendWSToAll({ cmd: 'ScriptDeleteResp', data: { id: rx_id, state: toInt8(data[3]) } });
-			}
-			break;
-		}
-
-		case 'reload':
-		{
-			if(rx_cmd === 0x88)
-				SendWSToAll({ cmd: 'ScriptReloadResp', data: { state: toInt8(data[1]) } });
-			break;
-		}
-	}
-}
-
-
-// ================================================================ Числа
-
-function readULE(arr, offset, byteCount)
-{
-	let value = 0;
-	for(let i = 0; i < byteCount; i++)
-		value |= arr[offset + i] << (8 * i);
-	return value >>> 0;
-}
-
-function writeULE(value, byteCount)
-{
-	const bytes = [];
-	for(let i = 0; i < byteCount; i++)
-		bytes.push((value >> (8 * i)) & 0xFF);
-	return bytes;
-}
-
-function toInt8(byte)
-{
-	return byte > 127 ? byte - 256 : byte;
+			log_scripts(msg.cmd + ': ' + err.message);
+			SendWS(ws, { cmd: msg.cmd + 'Resp', data: { id: msg.data?.id, error: err.message } });
+		});
 }

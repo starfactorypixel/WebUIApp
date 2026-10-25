@@ -63,11 +63,12 @@ export class BlockParams
 		const cfgId = info.baseID + this.#json.offset;
 		const title = `${Int2Hex(info.baseID, 4)} · ${type ? type.name : 'тип ' + info.hw_type}`;
 
+		this.#container.classList.add('panel');
 		this.#container.innerHTML =
-		`<div class="params_head">
+		`<div class="panel_head">
 			<div>
-				<div class="params_title">${escapeHtml(title)}</div>
-				<div class="params_desc">${escapeHtml(type ? type.desc : '')} · obj настроек ${Int2Hex(cfgId, 4)}</div>
+				<div class="panel_title">${escapeHtml(title)}</div>
+				<div class="panel_desc">${escapeHtml(type ? type.desc : '')} · obj настроек ${Int2Hex(cfgId, 4)}</div>
 			</div>
 			<div class="params_ctrl">
 				<button data-cmd="read-all" title="Прочитать всё">📥 Прочитать всё</button>
@@ -116,6 +117,7 @@ export class BlockParams
 		this.#block.unsubscribe();
 		this.#block = null;
 		this.#container.innerHTML = '';
+		this.#container.classList.remove('panel');
 		this.#onClose();
 	}
 

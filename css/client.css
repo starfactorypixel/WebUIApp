@@ -1,11 +1,3 @@
-.params {
-	display: grid;
-	width: 308px;
-}
-
-.params input {
-	width: 64px;
-}
 
 ui-element {
 	/*display: inline-block;*/
@@ -30,16 +22,6 @@ ui-element .ui_title {
 .ui-meter_content div {
 	width: 100%;
 	text-align: center;
-}
-
-.device-block {
-	display: inline-block;
-	background-color: aqua;
-	margin: 10px;
-	padding: 10px;
-	border: 1px solid #aaa;
-	border-radius: 6px;
-	width: 220px;
 }
 
 .ui-stream
@@ -149,12 +131,6 @@ html.ws-offline ui-element {
 	filter: grayscale(1);
 }
 
-body {
-	font-family: system-ui, sans-serif;
-	margin: 20px;
-	background: #f4f5f7;
-}
-
 .tabs {
 	background: #fff;
 	border: 1px solid #d0d4da;
@@ -198,26 +174,6 @@ body {
 
 .tabs__panel[hidden] {
 	display: none;
-}
-
-#log {
-	margin-top: 16px;
-	background: #222;
-	color: #9f9;
-	padding: 10px;
-	font: 12px monospace;
-	height: 160px;
-	overflow: auto;
-	border-radius: 6px;
-}
-
-/* Уровни лога (js/loghtml.js) */
-#log .log_warn {
-	color: #ffd54f;
-}
-
-#log .log_error {
-	color: #ff6b6b;
 }
 
 /* Виджет cellbalance: баланс ячеек АКБ */

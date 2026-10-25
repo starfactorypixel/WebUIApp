@@ -1,0 +1,142 @@
+/* Редактор скриптов (scripts.html), панели — .panel из common.css */
+
+.scripts {
+	display: flex;
+	align-items: flex-start;
+	gap: 16px;
+}
+
+.script_editor {
+	flex: 1;
+	min-width: 0;
+}
+
+/* ---- Список скриптов в ESP ---- */
+
+.script_list {
+	width: 240px;
+	flex-shrink: 0;
+}
+
+.script_list table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 13px;
+	font-variant-numeric: tabular-nums;
+}
+
+.script_list th {
+	padding: 4px 10px;
+	text-align: left;
+	color: #666;
+	font-weight: normal;
+	border-bottom: 1px solid #e3e5e8;
+}
+
+.script_list td {
+	padding: 3px 10px;
+	border-bottom: 1px solid #f1f3f5;
+	cursor: pointer;
+}
+
+.script_list td:first-child {
+	font-family: monospace;
+	font-weight: 600;
+}
+
+.script_list th:nth-child(2),
+.script_list td:nth-child(2) {
+	text-align: right;
+}
+
+.script_list th:last-child,
+.script_list td:last-child {
+	text-align: center;
+	width: 1%;
+}
+
+.script_list tbody tr:hover {
+	background: #f4f7ff;
+}
+
+.script_list tr.is-current {
+	background: #e3ecfe;
+}
+
+/* Отключён или не загружен в PSRAM */
+.script_list tr.is-off td:first-child,
+.script_list tr.is-off td:nth-child(2) {
+	color: #999;
+}
+
+.script_list tr.is-unloaded td:first-child::after {
+	content: ' ⚠';
+	color: #ef6c00;
+}
+
+.script_id {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.script_id label {
+	font-weight: 600;
+}
+
+.script_id input {
+	width: 60px;
+	padding: 4px;
+	font: 14px monospace;
+	text-transform: uppercase;
+}
+
+.script_id input:invalid {
+	outline: 2px solid #d32f2f;
+}
+
+#script_text {
+	display: block;
+	width: 100%;
+	box-sizing: border-box;
+	padding: 8px 12px;
+	border: none;
+	border-bottom: 1px solid #d0d4da;
+	font: 13px/1.4 monospace;
+	resize: vertical;
+}
+
+#script_text:focus {
+	outline: none;
+	background: #fcfcfd;
+}
+
+.script_bottom {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 16px;
+	padding: 8px 12px;
+}
+
+#script_info {
+	font-size: 13px;
+	color: #555;
+	font-variant-numeric: tabular-nums;
+}
+
+#script_info .is-bad {
+	color: #c62828;
+	font-weight: 600;
+}
+
+/* Идёт операция с ESP */
+.scripts.is-busy {
+	cursor: progress;
+}
+
+/* Нет связи с сервером */
+html.ws-offline .scripts {
+	opacity: 0.5;
+	filter: grayscale(1);
+}

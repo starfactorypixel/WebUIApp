@@ -85,3 +85,21 @@ export function parseValueList(str)
 	}
 	return map;
 }
+
+/**
+ * Текст с hex-байтами → массив байт. Комментарии вырезаются: // …, /* … *\/, # …, ; …
+ * Байт — 1–2 hex-цифры, с 0x или без: "0x30 06 0x64" → [0x30, 0x06, 0x64]
+ */
+export function parseHexBytes(text)
+{
+	const clean = text
+		.replace(/\/\*[\s\S]*?\*\//g, '')
+		.replace(/\/\/.*$/gm, '')
+		.replace(/#.*$/gm, '')
+		.replace(/;.*$/gm, '');
+
+	const matches = clean.match(/0x[0-9a-fA-F]{1,2}|[0-9a-fA-F]{1,2}/g);
+	if(!matches) return [];
+
+	return matches.map(x => parseInt(x.replace(/^0x/i, ''), 16));
+}

@@ -93,3 +93,9 @@ export function FastFormatMs(ms)
 	const p = (n, w) => String(n).padStart(w, '0');
 	return p(hr, 2) + ':' + p(min, 2) + ':' + p(sec, 2) + '.' + p(msec, 3);
 }
+
+/** Байты → "0x30 0x06 0x64" */
+export function formatHexBytes(bytes, separator = ' ')
+{
+	return Array.from(bytes, b => '0x' + b.toString(16).toUpperCase().padStart(2, '0')).join(separator);
+}
