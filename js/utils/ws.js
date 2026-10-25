@@ -24,8 +24,10 @@ let socket = null;
 let retryDelay = RECONNECT_MIN_MS;
 let retryTimer = null;
 
-/** Запуск соединения. Вызывается один раз из app-client.js. */
-export function WSStart(wsUrl)
+const WS_URL = 'ws://localhost:8080';	// адрес server.js (server.json → ws.port)
+
+/** Запуск соединения. Вызывается один раз из app-*.js. */
+export function WSStart(wsUrl = WS_URL)
 {
 	if(url !== null) return; // уже запущено
 	url = wsUrl;

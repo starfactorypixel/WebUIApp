@@ -11,7 +11,7 @@
 //   - ESP заново принял подключение (L3 'connect') — подписка на все нужные obj заново.
 //
 // Упаковка в пакеты L3 — забота только сервера. Браузер шлёт сколько угодно id или сообщений
-// одним WS-сообщением, сервер раскладывает их по пакетам L3 (сообщение не больше L3Packet.MSG_MAX байт).
+// одним WS-сообщением, сервер раскладывает их по пакетам L3 (сообщение не больше obj_l3.msg_max байт).
 
 const config = require('../data/server.json');
 
@@ -227,7 +227,7 @@ function SendCanSub(ids, unsub)
 {
 	if(ids.length === 0) return;
 
-	const per_msg = Math.min(CANSUB_COUNT_MAX, Math.floor((L3Packet.MSG_MAX - CANSUB_HEADER_LEN) / CANSUB_ID_LEN));
+	const per_msg = Math.min(CANSUB_COUNT_MAX, Math.floor((obj_l3.msg_max - CANSUB_HEADER_LEN) / CANSUB_ID_LEN));
 
 	for(let i = 0; i < ids.length; i += per_msg)
 	{

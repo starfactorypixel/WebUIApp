@@ -8,8 +8,6 @@ import { BlockInfo, FID_BLOCK_INFO } from './config/blockinfo.js';
 import { BlockParams } from './config/blockparams.js';
 import blocks_json from '../data/blocks.json' with { type: 'json' };
 
-const WS_URL = 'ws://localhost:8080';
-
 const params = new BlockParams(document.getElementById('params'), blocks_json, () => blocks.select(null));
 
 const blocks = new BlockInfo(document.getElementById('blocks'), blocks_json.blocks, (info) =>
@@ -25,4 +23,4 @@ WSEvents.addEventListener('packetRaw', (e) =>
 	if(bytes[0] === FID_BLOCK_INFO) blocks.processPacket(bytes);
 });
 
-WSStart(WS_URL);
+WSStart();

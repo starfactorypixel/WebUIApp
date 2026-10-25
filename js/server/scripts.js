@@ -9,9 +9,7 @@
 //
 // Каждая операция — последовательность «запрос → ждём ответ» (по одному запросу за раз).
 // Одновременно выполняется одна операция; вторая сразу получает ошибку «занято».
-// Размеры кусков считаются от L3Packet.MSG_MAX и лимита, который сообщает ESP.
-
-const L3Packet = require('../utils/L3Packet.js');
+// Размеры кусков считаются от l3.msg_max и лимита, который сообщает ESP.
 
 const CMD =
 {
@@ -104,7 +102,7 @@ class Scripts
 			const length = info.readUInt16LE(2);
 			const crc = info.readUInt32LE(4);
 
-			const max_len = L3Packet.MSG_MAX - READ_RESP_HEADER_LEN;
+			const max_len = this.#l3.msg_max - READ_RESP_HEADER_LEN;
 			const data = Buffer.alloc(length);
 			let offset = 0;
 
@@ -130,7 +128,7 @@ class Scripts
 		{
 			const data = Buffer.from(bytes);
 			const begin = await this.#request(CMD.WRITE_BEGIN, [...U16(id), ...U16(data.length)]);	// id, max_chunk
-			const chunk_max = Math.min(begin.readUInt16LE(2), L3Packet.MSG_MAX - WRITE_HEADER_LEN);
+			const chunk_max = Math.min(begin.readUInt16LE(2), this.#l3.msg_max - WRITE_HEADER_LEN);
 			if(chunk_max <= 0) throw new Error('ESP сообщил нулевой размер куска');
 
 			for(let offset = 0; offset < data.length; offset += chunk_max)
@@ -220,7 +218,7 @@ class Scripts
 		return new Promise((resolve, reject) =>
 		{
 			const msg = Buffer.from([this.#fid, cmd, ...body]);
-			if(msg.length > L3Packet.MSG_MAX) return reject(new Error(`запрос ${msg.length} байт, максимум сообщения L3 ${L3Packet.MSG_MAX}`));
+			if(msg.length > this.#l3.msg_max) return reject(new Error(`запрос ${msg.length} байт, максимум сообщения L3 ${this.#l3.msg_max}`));
 			if(!this.#l3.send(msg)) return reject(new Error('ESP не подключён'));
 
 			const timer = setTimeout(() =>

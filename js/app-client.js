@@ -13,8 +13,6 @@ import { RadioWidget } from './client/widgets/radio.js';
 import { RangeWidget } from './client/widgets/range.js';
 import { CellBalanceWidget } from './client/widgets/cellbalance.js';
 
-const WS_URL = 'ws://localhost:8080';
-
 // Сколько ждать ответ 0x65 на команду (мс). У виджета можно переопределить: config.timeout.
 Control.timeout = 2000;
 
@@ -45,4 +43,4 @@ initWidgets(document, el => !el.closest('[data-tab-title]'));
 
 // 4. Соединение. Порядок больше не важен: подписки, сделанные до 'open',
 //    отправятся сами, как только сокет откроется, и повторятся после обрыва.
-WSStart(WS_URL);
+WSStart();

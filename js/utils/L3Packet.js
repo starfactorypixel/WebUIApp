@@ -7,7 +7,7 @@ L3Packet — клиент протокола L3 (связь с ESP32 по UART).
 	l3.send(msg);										// одно сообщение отдельным пакетом
 	l3.fid.Script										// fId по имени из l3_fids.json
 
-Сообщение — [fId][данные…], не длиннее L3Packet.MSG_MAX (= min(DATA_MAX − 1, 255)).
+Размер DATA — config.l3.data_max (должен совпадать с ESP). Сообщение — [fId][данные…], не длиннее l3.msg_max (= min(data_max − 1, 255)).
 DATA — сообщения подряд, перед каждым его длина: [len u8][fId][данные…] [len][fId][…] …
 len — байт после него (fId + данные), 1…255. Так одинаково для всех сообщений, служебных тоже (beacon, accept, ping):
 длину пишет add(), при разборе её снимает _dispatch() — в 'message' приходит сообщение без len.
@@ -36,8 +36,7 @@ const IV_LEN = 12;
 const TAG_LEN = 16;
 const CRC_LEN = 2;
 const DATA_OFFSET = HEADER_LEN + IV_LEN;				// 18
-const DATA_MAX = 128;
-const PAYLOAD_MAX = IV_LEN + DATA_MAX + TAG_LEN;		// 92
+const DATA_MAX_LIMIT = 2048;							// предел config.l3.data_max (поле длины кадра — u16, буфер приёма)
 const SECURE_MIN = HEADER_LEN + IV_LEN + TAG_LEN + CRC_LEN;	// кадр SIGN/ENCRYPT с пустым DATA
 
 const DIR_TO_ESP = 0x80;								// бит 7 CTRL0
@@ -48,7 +47,6 @@ const FID_BEACON = 0x00;
 const FID_ACCEPT = 0x01;
 const FID_PING = 0x05;
 const BEACON_HEAD_LEN = 12;								// fId, interval(2), sn(8), length(1), далее имя
-const MSG_MAX = Math.min(DATA_MAX - 1, 0xFF);			// сообщение (fId + данные): len — 1 байт
 const ACCEPT = Buffer.from([1, FID_ACCEPT]);			// готовый DATA: [len][fId]
 const PING = Buffer.from([1, FID_PING]);
 const COUNTER_MAX = 0xFFFFFFFF;
@@ -65,9 +63,6 @@ for(let i = 0; i < 256; i++)
 
 class L3Packet extends EventEmitter
 {
-	static DATA_MAX = DATA_MAX;
-	static MSG_MAX = MSG_MAX;
-
 	constructor(config, port)
 	{
 		super();
@@ -81,19 +76,28 @@ class L3Packet extends EventEmitter
 		this.format = FORMATS[cfg.format];
 		if(this.format === undefined) throw new Error('L3: format — SIGN или ENCRYPT');
 
+		// Размер DATA — как у ESP. Не совпадёт — длинные кадры ESP отбрасываются (в лог пишется)
+		if(!Number.isInteger(cfg.data_max) || cfg.data_max < 2 || cfg.data_max > DATA_MAX_LIMIT)
+			throw new Error('L3: data_max — размер DATA, как у ESP: целое 2…' + DATA_MAX_LIMIT);
+		this.data_max = cfg.data_max;
+		this.msg_max = Math.min(this.data_max - 1, 0xFF);	// сообщение (fId + данные): len — 1 байт
+		this.payload_max = IV_LEN + this.data_max + TAG_LEN;	// поле длины кадра: IV + DATA + тег
+		this.oversize_log_at = -Infinity;					// когда последний раз писали о слишком длинном кадре
+
 		this.keys = new Map(cfg.keys.map((k) => [this._hex(k.sn, 8).toString('hex'), this._hex(k.key, 32)]));
 
 		this.fid = {};
 		for(const [name, d] of Object.entries(FIDS)) this.fid[name] = Number(d.fid);
 
-		this.rx_buf = Buffer.alloc(4096);
+		this.rx_buf = Buffer.alloc(Math.max(4096, 4 * (HEADER_LEN + this.payload_max + CRC_LEN)));
 		this.rx_len = 0;
 		this.stall_timer = null;
 		this.stall_armed = false;
 		this.esp_text = '';
 
-		this.tx_buf = Buffer.alloc(DATA_MAX);
-		this.tx_len = 0;
+		// DATA накапливаемого пакета: сообщения [len][fId][…] от add() до commit(). Кадр вокруг него собирает _send()
+		this.tx_data = Buffer.alloc(this.data_max);
+		this.tx_data_len = 0;
 
 		this._reset();
 
@@ -115,12 +119,12 @@ class L3Packet extends EventEmitter
 			log('сообщение не массив байт — не отправлено');
 			return false;
 		}
-		if(msg.length === 0 || msg.length > MSG_MAX) { log('сообщение ' + msg.length + ' байт, допустимо 1…' + MSG_MAX + ' — не отправлено'); return false; }
+		if(msg.length === 0 || msg.length > this.msg_max) { log('сообщение ' + msg.length + ' байт, допустимо 1…' + this.msg_max + ' — не отправлено'); return false; }
 
-		if(this.tx_len + 1 + msg.length > DATA_MAX) this.commit();
-		this.tx_buf[this.tx_len] = msg.length;
-		this.tx_buf.set(msg, this.tx_len + 1);
-		this.tx_len += 1 + msg.length;
+		if(this.tx_data_len + 1 + msg.length > this.data_max) this.commit();
+		this.tx_data[this.tx_data_len] = msg.length;
+		this.tx_data.set(msg, this.tx_data_len + 1);
+		this.tx_data_len += 1 + msg.length;
 
 		return true;
 	}
@@ -128,11 +132,11 @@ class L3Packet extends EventEmitter
 	// Отправить накопленное
 	commit()
 	{
-		if(this.tx_len === 0) return true;
-		if(!this.accepted) { log('ESP не принял подключение — не отправлено'); this.tx_len = 0; return false; }
+		if(this.tx_data_len === 0) return true;
+		if(!this.accepted) { log('ESP не принял подключение — не отправлено'); this.tx_data_len = 0; return false; }
 
-		const ok = this._send(this.tx_buf.subarray(0, this.tx_len));
-		this.tx_len = 0;
+		const ok = this._send(this.tx_data.subarray(0, this.tx_data_len));
+		this.tx_data_len = 0;
 
 		return ok;
 	}
@@ -162,7 +166,7 @@ class L3Packet extends EventEmitter
 		this.name = null;
 		this.interval = 0;
 		this.last_rx = 0;
-		this.tx_len = 0;
+		this.tx_data_len = 0;
 	}
 
 	// Подключение: проверенный beacon -> состояние сеанса -> сразу accept. Сеанс открыт, когда ESP ответит своим accept
@@ -234,15 +238,16 @@ class L3Packet extends EventEmitter
 		if(this.tx_counter === COUNTER_MAX) { this.tx_counter = 0; this.tx_epoch++; }
 		else this.tx_counter++;
 
-		const len = IV_LEN + data.length + TAG_LEN;
+		// Кадр: заголовок + payload (IV + DATA + тег) + CRC
+		const payload_len = IV_LEN + data.length + TAG_LEN;
 		const tag_pos = DATA_OFFSET + data.length;
-		const f = Buffer.alloc(HEADER_LEN + len + CRC_LEN);
+		const f = Buffer.alloc(HEADER_LEN + payload_len + CRC_LEN);
 
 		// Заголовок (входит в AAD, поэтому до подписи). Резервные биты — 0
 		f[0] = 0x50; f[1] = 0x58;
 		f[2] = VERSION | DIR_TO_ESP;
 		f[3] = this.format;
-		f.writeUInt16LE(len, 4);
+		f.writeUInt16LE(payload_len, 4);
 
 		// IV: epoch(3) instance(1) counter(4) random(4)
 		f[6] = this.tx_epoch & 0xFF; f[7] = (this.tx_epoch >> 8) & 0xFF; f[8] = this.tx_epoch >> 16;
@@ -314,10 +319,10 @@ class L3Packet extends EventEmitter
 			if(b[p + 1] !== 0x58) { this._text(b, p, p + 1); p++; continue; }
 			if(end - p < HEADER_LEN) break;
 
-			const len = b.readUInt16LE(p + 4);
-			if(len > PAYLOAD_MAX) { this._text(b, p, p + 1); p++; continue; }
+			const payload_len = b.readUInt16LE(p + 4);		// IV + DATA + тег
+			if(payload_len > this.payload_max) { this._oversize(b, p, payload_len); this._text(b, p, p + 1); p++; continue; }
 
-			const crc_pos = p + HEADER_LEN + len;
+			const crc_pos = p + HEADER_LEN + payload_len;
 			if(crc_pos + CRC_LEN > end) break;
 
 			if(this._crc(b, p, crc_pos) !== b.readUInt16LE(crc_pos)) { this._text(b, p, p + 1); p++; continue; }
@@ -333,6 +338,20 @@ class L3Packet extends EventEmitter
 
 		if(tail === 0) this.stall_armed = false;
 		else if(p > 0 || !this.stall_armed) this._armStall();
+	}
+
+	// Длина больше допустимой. Обычно это текст лога ESP, но если и версия, и направление верные — скорее кадр ESP
+	// с другим data_max: пишем в лог (не чаще раза в 5 с), иначе такие кадры пропадают молча
+	_oversize(b, p, payload_len)
+	{
+		if(b[p + 2] !== VERSION) return;		// VERSION без бита DIR_TO_ESP — кадр от ESP
+
+		const now = performance.now();
+		if(now - this.oversize_log_at < 5000) return;
+		this.oversize_log_at = now;
+
+		const data = payload_len - IV_LEN - TAG_LEN;
+		log('ОШИБКА: кадр ESP отброшен: DATA ' + data + ' байт больше data_max ' + this.data_max + ' — у ESP другой размер DATA? (config.l3.data_max)');
 	}
 
 	_armStall()
