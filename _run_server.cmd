@@ -6,4 +6,4 @@ call npm install serialport ws
 
 ECHO.
 ECHO ^> Run server...
-node server.js
+node js/server.js

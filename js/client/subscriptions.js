@@ -15,7 +15,7 @@
 //   - нет соединения     → ничего не отправляется, всё уйдёт при открытии.
 
 import { WSEvents, WSSubscribe, WSUnsubscribe } from '../ws.js';
-import { log } from '../log.js';
+import { log } from '../loghtml.js';
 
 const CHUNK_SIZE = 32;
 
@@ -84,9 +84,9 @@ WSEvents.addEventListener('open', () =>
 });
 
 // Пришёл пакет — раздаём всем подписанным на этот obj.
-WSEvents.addEventListener('packet', (e) =>
+WSEvents.addEventListener('packet', (e) => 
 {
-	const { id, data } = e.detail;
+	const { id, bytes } = e.detail;
 	const list = handlers.get(id);
 	if(!list) return;
 
@@ -94,7 +94,7 @@ WSEvents.addEventListener('packet', (e) =>
 	{
 		try
 		{
-			fn(data, id);
+			fn(bytes, id);
 		}
 		catch(err)
 		{

@@ -21,8 +21,8 @@
 //   - у группы obj ответы разные (например, TOGGLE развёл их в разные состояния).
 
 import { readNumberFromArray, writeNumberToArray } from '../parse.js';
-import { WSSendRaw } from '../ws.js';
-import { log } from '../log.js';
+import { WSSendCanMsg, WSSendRaw } from '../ws.js';
+import { log } from '../loghtml.js';
 
 const FID_SET    = 0x01;
 const FID_TOGGLE = 0x02;
@@ -97,7 +97,7 @@ export class Control
 
 		for(const id of this.ids)
 		{
-			if(WSSendRaw(0x15, id, bytes)) this.waiting.add(id);
+			if(WSSendCanMsg(id, bytes)) this.waiting.add(id);
 			else { this.failed.push(id); this.notSent.add(id); } // нет связи — не ушло
 		}
 

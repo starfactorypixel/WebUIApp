@@ -175,7 +175,7 @@ body {
 	border-radius: 6px;
 }
 
-/* Уровни лога (js/log.js) */
+/* Уровни лога (js/loghtml.js) */
 #log .log_warn {
 	color: #ffd54f;
 }

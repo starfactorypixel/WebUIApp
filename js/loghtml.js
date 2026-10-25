@@ -1,6 +1,6 @@
 // Лог системы: строка на странице (в <div id="log">, если он есть) + консоль браузера.
 //
-//   import { log } from './log.js';
+//   import { log } from './loghtml.js';
 //   log.info('[WS] Соединение установлено');
 //   log.warn('[Газ М1+М2] SET 700: 0x0104=700, 0x0105=нет ответа');
 //   log.error('Некорректный JSON в config', el, err);

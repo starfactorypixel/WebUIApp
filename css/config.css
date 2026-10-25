@@ -1,0 +1,64 @@
+body {
+	font-family: Arial, sans-serif;
+}
+
+.param-obj
+{
+	display: flex;
+	gap: 16px;
+	align-items: center;
+	padding: 6px;
+	border: 1px solid #000000;
+	background-color: rgba(193, 255, 197, 0.9);
+}
+
+.param-obj div
+{
+	/*border: 1px solid #000000;*/
+}
+
+.param_id
+{
+	width: 26px;
+	text-align: right;
+	font-size: 20px;
+	font-weight: bold;
+}
+.param_namedisc
+{
+	width: 350px;
+}
+.param_name
+{
+	font-size: 16px;
+	font-weight: bold;
+}
+.param_disc
+{
+	font-size: 12px;
+}
+.param_field
+{
+	width: 200px;
+}
+.param_field input
+{
+	width: 150px;
+	padding: 4px;
+	-moz-appearance: textfield;
+}
+.param_ctrl
+{
+	
+}
+
+.device-block
+{
+	display: inline-block;
+	background-color: aqua;
+	margin: 10px;
+	padding: 10px;
+	border: 1px solid #aaa;
+	border-radius: 6px;
+	width: 220px;
+}

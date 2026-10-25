@@ -1,6 +1,6 @@
 import { UIWidget } from './base.js';
-import { sprintfNamed, escapeHtml } from '../format.js';
-import { Control } from '../client/control.js';
+import { sprintfNamed, escapeHtml } from '../../format.js';
+import { Control } from '../control.js';
 
 export class RangeWidget extends UIWidget
 {

@@ -1,17 +1,17 @@
 import { registerWidget } from './client/registry.js';
 import { initWidgets, deinitWidgets } from './client/dispatch.js';
 import { WSStart } from './ws.js';
-import { log } from './log.js';
+import { log } from './loghtml.js';
 import './client/subscriptions.js'; // маршрутизация пакетов и повтор подписок после переподключения
 import { Tabs } from './tabs.js';
 import { Control } from './client/control.js';
-import { ButtonWidget } from './widgets/button.js';
-import { ValueWidget } from './widgets/value.js';
-import { MeterWidget } from './widgets/meter.js';
-import { StreamWidget } from './widgets/stream.js';
-import { RadioWidget } from './widgets/radio.js';
-import { RangeWidget } from './widgets/range.js';
-import { CellBalanceWidget } from './widgets/cellbalance.js';
+import { ButtonWidget } from './client/widgets/button.js';
+import { ValueWidget } from './client/widgets/value.js';
+import { MeterWidget } from './client/widgets/meter.js';
+import { StreamWidget } from './client/widgets/stream.js';
+import { RadioWidget } from './client/widgets/radio.js';
+import { RangeWidget } from './client/widgets/range.js';
+import { CellBalanceWidget } from './client/widgets/cellbalance.js';
 
 const WS_URL = 'ws://localhost:8080';
 

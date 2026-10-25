@@ -1,5 +1,5 @@
-import { readNumberFromArray } from '../parse.js';
-import { subscribe } from '../client/subscriptions.js';
+import { readNumberFromArray } from '../../parse.js';
+import { subscribe } from '../subscriptions.js';
 
 export class UIWidget
 {

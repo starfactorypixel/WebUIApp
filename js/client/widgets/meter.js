@@ -1,6 +1,6 @@
 import { UIWidget } from './base.js';
-import { readNumberFromArray } from '../parse.js';
-import { sprintfNamed, escapeHtml } from '../format.js';
+import { readNumberFromArray } from '../../parse.js';
+import { sprintfNamed, escapeHtml } from '../../format.js';
 
 export class MeterWidget extends UIWidget
 {
