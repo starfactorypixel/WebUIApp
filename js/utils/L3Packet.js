@@ -4,8 +4,13 @@ L3Packet — клиент протокола L3 (связь с ESP32 по UART).
 
 	const l3 = new L3Packet(config, serialPort);		// config.l3 + config.serial.debug; сам читает порт и пишет в него
 	l3.add(msg); l3.add(msg); l3.commit();				// сообщения подряд в пакет, как AddPacket/Commit в ESP
-	l3.send(bytes);										// готовый DATA одним пакетом
+	l3.send(msg);										// одно сообщение отдельным пакетом
 	l3.fid.Script										// fId по имени из l3_fids.json
+
+Сообщение — [fId][данные…], не длиннее L3Packet.MSG_MAX (= min(DATA_MAX − 1, 255)).
+DATA — сообщения подряд, перед каждым его длина: [len u8][fId][данные…] [len][fId][…] …
+len — байт после него (fId + данные), 1…255. Так одинаково для всех сообщений, служебных тоже (beacon, accept, ping):
+длину пишет add(), при разборе её снимает _dispatch() — в 'message' приходит сообщение без len.
 
 События (подписываться не обязательно):
 	'message'    (fid, data)   — прикладное сообщение от ESP, data начинается с fId
@@ -16,14 +21,7 @@ L3Packet — клиент протокола L3 (связь с ESP32 по UART).
 	                             'port' — порт закрылся (USB отвалился)
 После закрытия порта или потери связи клиент ждёт beacon и подключается сам, ничего делать не нужно.
 
-l3_fids.json — имя сообщения -> fId и, если известна, длина (нужна, чтобы делить DATA на сообщения):
-	"Name": { "fid": "0x17", "length": 12 }
-		фиксированная длина
-	"Name": { "fid": "0x17", "length": { "header": 4, "len_field": 3, "item_size": 1 } }
-		переменная: header + data[len_field] * item_size. header — байт до данных (с fId),
-		len_field — смещение байта-счётчика от fId, item_size — размер элемента (не задан — 1)
-	"Name": { "fid": "0x1B" }
-		длина неизвестна: сообщение забирает остаток DATA целиком (в нём может быть несколько сообщений)
+l3_fids.json — имя сообщения -> fId: "Name": { "fid": "0x17" }
 */
 
 const crypto = require('crypto');
@@ -38,7 +36,7 @@ const IV_LEN = 12;
 const TAG_LEN = 16;
 const CRC_LEN = 2;
 const DATA_OFFSET = HEADER_LEN + IV_LEN;				// 18
-const DATA_MAX = 64;
+const DATA_MAX = 128;
 const PAYLOAD_MAX = IV_LEN + DATA_MAX + TAG_LEN;		// 92
 const SECURE_MIN = HEADER_LEN + IV_LEN + TAG_LEN + CRC_LEN;	// кадр SIGN/ENCRYPT с пустым DATA
 
@@ -50,8 +48,9 @@ const FID_BEACON = 0x00;
 const FID_ACCEPT = 0x01;
 const FID_PING = 0x05;
 const BEACON_HEAD_LEN = 12;								// fId, interval(2), sn(8), length(1), далее имя
-const ACCEPT = Buffer.from([FID_ACCEPT]);
-const PING = Buffer.from([FID_PING]);
+const MSG_MAX = Math.min(DATA_MAX - 1, 0xFF);			// сообщение (fId + данные): len — 1 байт
+const ACCEPT = Buffer.from([1, FID_ACCEPT]);			// готовый DATA: [len][fId]
+const PING = Buffer.from([1, FID_PING]);
 const COUNTER_MAX = 0xFFFFFFFF;
 const EPOCH_MAX = 0xFFFFFF;
 
@@ -67,6 +66,7 @@ for(let i = 0; i < 256; i++)
 class L3Packet extends EventEmitter
 {
 	static DATA_MAX = DATA_MAX;
+	static MSG_MAX = MSG_MAX;
 
 	constructor(config, port)
 	{
@@ -84,13 +84,7 @@ class L3Packet extends EventEmitter
 		this.keys = new Map(cfg.keys.map((k) => [this._hex(k.sn, 8).toString('hex'), this._hex(k.key, 32)]));
 
 		this.fid = {};
-		this.lengths = new Map();
-		for(const [name, d] of Object.entries(FIDS))
-		{
-			const fid = Number(d.fid);
-			this.fid[name] = fid;
-			if(d.length !== undefined) this.lengths.set(fid, d.length);
-		}
+		for(const [name, d] of Object.entries(FIDS)) this.fid[name] = Number(d.fid);
 
 		this.rx_buf = Buffer.alloc(4096);
 		this.rx_len = 0;
@@ -113,14 +107,20 @@ class L3Packet extends EventEmitter
 		return this.accepted;
 	}
 
-	// Добавить сообщение в пакет. Не помещается — накопленное уходит, сообщение начинает новый пакет
+	// Добавить сообщение в пакет ([len] + сообщение). Не помещается — накопленное уходит, сообщение начинает новый пакет
 	add(msg)
 	{
-		if(msg.length > DATA_MAX) { log('сообщение ' + msg.length + ' байт, максимум ' + DATA_MAX + ' — не отправлено'); return false; }
+		if(!(msg instanceof Uint8Array) && !(Array.isArray(msg) && msg.every((b) => Number.isInteger(b) && b >= 0 && b <= 0xFF)))
+		{
+			log('сообщение не массив байт — не отправлено');
+			return false;
+		}
+		if(msg.length === 0 || msg.length > MSG_MAX) { log('сообщение ' + msg.length + ' байт, допустимо 1…' + MSG_MAX + ' — не отправлено'); return false; }
 
-		if(this.tx_len + msg.length > DATA_MAX) this.commit();
-		this.tx_buf.set(msg, this.tx_len);
-		this.tx_len += msg.length;
+		if(this.tx_len + 1 + msg.length > DATA_MAX) this.commit();
+		this.tx_buf[this.tx_len] = msg.length;
+		this.tx_buf.set(msg, this.tx_len + 1);
+		this.tx_len += 1 + msg.length;
 
 		return true;
 	}
@@ -137,19 +137,11 @@ class L3Packet extends EventEmitter
 		return ok;
 	}
 
-	// Готовый DATA (одно или несколько сообщений) отдельным пакетом
-	send(bytes)
+	// Одно сообщение отдельным пакетом (накопленное уходит перед ним)
+	send(msg)
 	{
-		if(!(bytes instanceof Uint8Array) && !(Array.isArray(bytes) && bytes.every((b) => Number.isInteger(b) && b >= 0 && b <= 0xFF)))
-		{
-			log('данные не массив байт — не отправлено');
-			return false;
-		}
-		if(bytes.length > DATA_MAX) { log('DATA ' + bytes.length + ' байт, максимум ' + DATA_MAX + ' — не отправлено'); return false; }
-
 		this.commit();
-		if(!this.accepted) { log('ESP не принял подключение — не отправлено'); return false; }
-		return this._send(Buffer.from(bytes));
+		return this.add(msg) && this.commit();
 	}
 
 
@@ -379,7 +371,7 @@ class L3Packet extends EventEmitter
 		// Другой идентификатор сеанса раньше N: ESP закрыл сеанс или перезапустился, его N может быть меньше
 		if(!f.subarray(14, 18).equals(this.esp_session))
 		{
-			const beacon = this._parseBeacon(data, 0);
+			const beacon = this._parseBeacon(this._first(data));
 			if(beacon === null) return this._reject('чужой сеанс', f);
 
 			const key = this.key;
@@ -404,7 +396,7 @@ class L3Packet extends EventEmitter
 	{
 		if((f[3] & 0x07) !== FMT_SIGN) return this._reject('нет сеанса', f);
 
-		const beacon = this._parseBeacon(f.subarray(DATA_OFFSET, f.length - CRC_LEN - TAG_LEN), 0);
+		const beacon = this._parseBeacon(this._first(f.subarray(DATA_OFFSET, f.length - CRC_LEN - TAG_LEN)));
 		if(beacon === null) return this._reject('нет сеанса', f);
 
 		const key = this.keys.get(beacon.sn);
@@ -422,69 +414,52 @@ class L3Packet extends EventEmitter
 		this._connect(f, beacon, key);
 	}
 
-	// DATA -> сообщения. Beacon, accept и ping обрабатываются здесь, остальное — в 'message'
+	// DATA -> сообщения по len. Beacon, accept и ping обрабатываются здесь, остальное — в 'message' (без len)
 	_dispatch(data)
 	{
 		let off = 0;
 		while(off < data.length)
 		{
-			const fid = data[off];
+			const len = data[off];
+			if(len === 0 || off + 1 + len > data.length) { log('DATA: неверная длина сообщения ' + len + ' на смещении ' + off + ', остаток пакета пропущен'); return; }
 
-			if(fid === FID_BEACON)
+			const msg = data.subarray(off + 1, off + 1 + len);
+			off += 1 + len;
+
+			switch(msg[0])
 			{
-				const beacon = this._parseBeacon(data, off);
-				if(beacon === null) return;
-				this.interval = beacon.interval;		// сеанс тот же — меняется только интервал
-				off += beacon.size;
-				continue;
+				case FID_BEACON:
+				{
+					const beacon = this._parseBeacon(msg);
+					if(beacon !== null) this.interval = beacon.interval;	// сеанс тот же — меняется только интервал
+					break;
+				}
+				case FID_ACCEPT: this._accept(); break;
+				case FID_PING: this._send(PING); break;
+				default: this.emit('message', msg[0], Buffer.from(msg));
 			}
-
-			if(fid === FID_ACCEPT)
-			{
-				this._accept();
-				off += 1;
-				continue;
-			}
-
-			if(fid === FID_PING)
-			{
-				this._send(PING);
-				off += 1;
-				continue;
-			}
-
-			const size = this._length(data, off);
-			this.emit('message', fid, Buffer.from(data.subarray(off, off + size)));
-			off += size;
 		}
 	}
 
-	// Длина сообщения по l3_fids.json. Неизвестна — остаток DATA
-	_length(data, off)
+	// Первое сообщение DATA (без len) или null
+	_first(data)
 	{
-		const left = data.length - off;
-		const d = this.lengths.get(data[off]);
-
-		let size = 0;
-		if(typeof d === 'number') size = d;
-		else if(d !== undefined && d.len_field < left) size = d.header + data[off + d.len_field] * (d.item_size ?? 1);
-
-		return (size > 0 && size <= left) ? size : left;
+		if(data.length < 2 || data[0] === 0 || 1 + data[0] > data.length) return null;
+		return data.subarray(1, 1 + data[0]);
 	}
 
-	_parseBeacon(data, off)
+	// Beacon: [fId][interval u16][sn 8][name_len][name…]
+	_parseBeacon(msg)
 	{
-		const left = data.length - off;
-		if(left < BEACON_HEAD_LEN || data[off] !== FID_BEACON) return null;
+		if(msg === null || msg.length < BEACON_HEAD_LEN || msg[0] !== FID_BEACON) return null;
 
-		const name_len = data[off + 11];
-		if(name_len > 32 || left < BEACON_HEAD_LEN + name_len) return null;
+		const name_len = msg[11];
+		if(name_len > 32 || msg.length < BEACON_HEAD_LEN + name_len) return null;
 
 		return {
-			interval: data.readUInt16LE(off + 1),
-			sn: data.toString('hex', off + 3, off + 11),
-			name: data.toString('utf8', off + BEACON_HEAD_LEN, off + BEACON_HEAD_LEN + name_len),
-			size: BEACON_HEAD_LEN + name_len,
+			interval: msg.readUInt16LE(1),
+			sn: msg.toString('hex', 3, 11),
+			name: msg.toString('utf8', BEACON_HEAD_LEN, BEACON_HEAD_LEN + name_len),
 		};
 	}
 

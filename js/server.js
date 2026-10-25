@@ -11,7 +11,7 @@
 //   - ESP заново принял подключение (L3 'connect') — подписка на все нужные obj заново.
 //
 // Упаковка в пакеты L3 — забота только сервера. Браузер шлёт сколько угодно id или сообщений
-// одним WS-сообщением, сервер раскладывает их по пакетам L3 (не больше L3Packet.DATA_MAX байт).
+// одним WS-сообщением, сервер раскладывает их по пакетам L3 (сообщение не больше L3Packet.MSG_MAX байт).
 
 const config = require('../data/server.json');
 
@@ -139,9 +139,9 @@ function HandleWSCommand(ws, msg)
 			}
 			break;
 
-		// Сырые данные одним пакетом L3: { cmd: 'Raw', data: { bytes: [] } }
+		// Одно сообщение [fId][данные…] отдельным пакетом L3: { cmd: 'Raw', data: { bytes: [] } }
 		case 'Raw':
-			obj_l3.send(Buffer.from(msg.data.bytes));
+			obj_l3.send(msg.data.bytes);
 			break;
 
 		// Скрипты ESP (SCRIPTS_PROTOCOL.md): ответ { cmd: cmd + 'Resp', data } — только этому клиенту
@@ -227,7 +227,7 @@ function SendCanSub(ids, unsub)
 {
 	if(ids.length === 0) return;
 
-	const per_msg = Math.min(CANSUB_COUNT_MAX, Math.floor((L3Packet.DATA_MAX - CANSUB_HEADER_LEN) / CANSUB_ID_LEN));
+	const per_msg = Math.min(CANSUB_COUNT_MAX, Math.floor((L3Packet.MSG_MAX - CANSUB_HEADER_LEN) / CANSUB_ID_LEN));
 
 	for(let i = 0; i < ids.length; i += per_msg)
 	{
@@ -260,7 +260,7 @@ function BuildCanMsg(id, bytes)
 
 // ================================================================ Сообщения от ESP
 
-// В одном пакете L3 может быть несколько прикладных сообщений, L3Packet делит их по l3_fids.json
+// В одном пакете L3 может быть несколько прикладных сообщений, L3Packet делит их по len перед каждым
 // и вызывает 'message' на каждое. Неизвестный fId забирает остаток пакета целиком.
 obj_l3.on('message', (fId, data) =>
 {

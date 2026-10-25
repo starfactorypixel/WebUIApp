@@ -4,9 +4,12 @@
 //   const scripts = new Scripts(obj_l3, log);
 //   const result = await scripts.Load(id, onProgress);   // ошибка — исключение с понятным текстом
 //
+// Запрос: [fId][cmd][поля…], ответ: [fId][cmd | 0x80][status][поля…].
+// Длину сообщения несёт L3 (len перед каждым сообщением в пакете), поэтому своей длины у Script нет.
+//
 // Каждая операция — последовательность «запрос → ждём ответ» (по одному запросу за раз).
 // Одновременно выполняется одна операция; вторая сразу получает ошибку «занято».
-// Размеры кусков считаются от L3Packet.DATA_MAX и лимита, который сообщает ESP.
+// Размеры кусков считаются от L3Packet.MSG_MAX и лимита, который сообщает ESP.
 
 const L3Packet = require('../utils/L3Packet.js');
 
@@ -25,12 +28,11 @@ const CMD =
 const RESP_BIT = 0x80;
 
 // Размеры заголовков сообщений (с fId)
-const REQ_HEADER_LEN = 2;					// fId, cmd
-const RESP_HEADER_LEN = 3;					// fId, cmd, status
-const WRITE_HEADER_LEN = REQ_HEADER_LEN + 4;	// + id u16, offset u16
+const REQ_HEADER_LEN = 2;							// fId, cmd
+const RESP_HEADER_LEN = REQ_HEADER_LEN + 1;			// + status
+const WRITE_HEADER_LEN = REQ_HEADER_LEN + 4;		// + id u16, offset u16
 const READ_RESP_HEADER_LEN = RESP_HEADER_LEN + 4;	// + id u16, offset u16
-const LIST_RESP_HEADER_LEN = RESP_HEADER_LEN + 2;	// + next u16
-const LIST_ENTRY_LEN = 5;					// id u16, length u16, flags u8
+const LIST_ENTRY_LEN = 5;							// id u16, length u16, flags u8
 const LIST_END = 0xFFFF;
 
 const STEP_TIMEOUT_MS = 1000;				// ожидание ответа на один запрос
@@ -68,7 +70,7 @@ class Scripts
 		l3.on('disconnect', () => this.#fail(new Error('связь с ESP потеряна')));
 	}
 
-	// Сообщение Script от ESP (data начинается с fId)
+	// Сообщение Script от ESP (data начинается с fId, L3Packet уже отделил его по len)
 	onMessage(data)
 	{
 		const w = this.#wait;
@@ -79,7 +81,7 @@ class Scripts
 
 		const status = data.readInt8(2);
 		if(status < 0) w.reject(new Error(STATUS_TEXT[status] ?? 'ошибка ESP, код ' + status));
-		else w.resolve(data);
+		else w.resolve(data.subarray(RESP_HEADER_LEN)); // поля ответа после status
 	}
 
 
@@ -89,8 +91,8 @@ class Scripts
 	{
 		return this.#run('информация', async () =>
 		{
-			const r = await this.#request(CMD.INFO, U16(id));
-			return { id, length: r.readUInt16LE(5), crc32: r.readUInt32LE(7), flags: r[11] };
+			const r = await this.#request(CMD.INFO, U16(id));	// id, length, crc32, flags
+			return { id, length: r.readUInt16LE(2), crc32: r.readUInt32LE(4), flags: r[8] };
 		});
 	}
 
@@ -99,18 +101,18 @@ class Scripts
 		return this.#run('чтение', async () =>
 		{
 			const info = await this.#request(CMD.INFO, U16(id));
-			const length = info.readUInt16LE(5);
-			const crc = info.readUInt32LE(7);
+			const length = info.readUInt16LE(2);
+			const crc = info.readUInt32LE(4);
 
-			const max_len = L3Packet.DATA_MAX - READ_RESP_HEADER_LEN;
+			const max_len = L3Packet.MSG_MAX - READ_RESP_HEADER_LEN;
 			const data = Buffer.alloc(length);
 			let offset = 0;
 
 			while(offset < length)
 			{
-				const r = await this.#request(CMD.READ, [...U16(id), ...U16(offset), ...U16(Math.min(max_len, length - offset))]);
-				const chunk = r.subarray(READ_RESP_HEADER_LEN);
-				if(r.readUInt16LE(5) !== offset || chunk.length === 0) throw new Error('ESP вернул не тот кусок данных');
+				const r = await this.#request(CMD.READ, [...U16(id), ...U16(offset), ...U16(Math.min(max_len, length - offset))]);	// id, offset, data
+				const chunk = r.subarray(4);
+				if(r.readUInt16LE(2) !== offset || chunk.length === 0) throw new Error('ESP вернул не тот кусок данных');
 
 				chunk.copy(data, offset);
 				offset += chunk.length;
@@ -127,8 +129,8 @@ class Scripts
 		return this.#run('запись', async () =>
 		{
 			const data = Buffer.from(bytes);
-			const begin = await this.#request(CMD.WRITE_BEGIN, [...U16(id), ...U16(data.length)]);
-			const chunk_max = Math.min(begin.readUInt16LE(5), L3Packet.DATA_MAX - WRITE_HEADER_LEN);
+			const begin = await this.#request(CMD.WRITE_BEGIN, [...U16(id), ...U16(data.length)]);	// id, max_chunk
+			const chunk_max = Math.min(begin.readUInt16LE(2), L3Packet.MSG_MAX - WRITE_HEADER_LEN);
 			if(chunk_max <= 0) throw new Error('ESP сообщил нулевой размер куска');
 
 			for(let offset = 0; offset < data.length; offset += chunk_max)
@@ -156,8 +158,8 @@ class Scripts
 	{
 		return this.#run('перезагрузка', async () =>
 		{
-			const r = await this.#request(CMD.RELOAD, []);
-			return { count: r.readUInt16LE(3) };
+			const r = await this.#request(CMD.RELOAD, []);	// count
+			return { count: r.readUInt16LE(0) };
 		});
 	}
 
@@ -165,8 +167,8 @@ class Scripts
 	{
 		return this.#run('включение', async () =>
 		{
-			const r = await this.#request(CMD.ENABLE, [...U16(id), on ? 1 : 0]);
-			return { id, flags: r[5] };
+			const r = await this.#request(CMD.ENABLE, [...U16(id), on ? 1 : 0]);	// id, flags
+			return { id, flags: r[2] };
 		});
 	}
 
@@ -179,10 +181,10 @@ class Scripts
 
 			while(from !== LIST_END)
 			{
-				const r = await this.#request(CMD.LIST, U16(from));
-				const next = r.readUInt16LE(3);
+				const r = await this.#request(CMD.LIST, U16(from));	// next, записи
+				const next = r.readUInt16LE(0);
 
-				for(let o = LIST_RESP_HEADER_LEN; o + LIST_ENTRY_LEN <= r.length; o += LIST_ENTRY_LEN)
+				for(let o = 2; o + LIST_ENTRY_LEN <= r.length; o += LIST_ENTRY_LEN)
 					scripts.push({ id: r.readUInt16LE(o), length: r.readUInt16LE(o + 2), flags: r[o + 4] });
 
 				if(next !== LIST_END && next <= from) throw new Error('ESP вернул неверное продолжение списка');
@@ -218,7 +220,7 @@ class Scripts
 		return new Promise((resolve, reject) =>
 		{
 			const msg = Buffer.from([this.#fid, cmd, ...body]);
-			if(msg.length > L3Packet.DATA_MAX) return reject(new Error(`запрос ${msg.length} байт больше пакета L3 (${L3Packet.DATA_MAX})`));
+			if(msg.length > L3Packet.MSG_MAX) return reject(new Error(`запрос ${msg.length} байт, максимум сообщения L3 ${L3Packet.MSG_MAX}`));
 			if(!this.#l3.send(msg)) return reject(new Error('ESP не подключён'));
 
 			const timer = setTimeout(() =>
