@@ -195,7 +195,7 @@ class L3Packet extends EventEmitter
 		this.sn = beacon.sn;
 		this.name = beacon.name;
 
-		log('beacon SN ' + beacon.sn + ' «' + beacon.name + '», сеанс ESP ' + this.esp_session.toString('hex') + ': отправлен accept');
+		log('beacon SN ' + beacon.sn + ' «' + beacon.name + '», сеанс ESP ' + this.esp_session.toString('hex') + ', сервер ' + this.random.toString('hex') + ': отправлен accept');
 		this._send(ACCEPT);
 	}
 
@@ -205,7 +205,7 @@ class L3Packet extends EventEmitter
 		if(this.accepted) return;
 
 		this.accepted = true;
-		log('подключено к SN ' + this.sn + ' «' + this.name + '», сеанс ESP ' + this.esp_session.toString('hex'));
+		log('подключено к SN ' + this.sn + ' «' + this.name + '», сеанс ESP ' + this.esp_session.toString('hex') + ', сервер ' + this.random.toString('hex'));
 		this.emit('connect', { sn: this.sn, name: this.name, session: this.esp_session.toString('hex') });
 	}
 
