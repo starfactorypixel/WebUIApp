@@ -21,7 +21,9 @@ len — байт после него (fId + данные), 1…255. Так од�
 	                             'port' — порт закрылся (USB отвалился)
 После закрытия порта или потери связи клиент ждёт beacon и подключается сам, ничего делать не нужно.
 
-l3_fids.json — имя сообщения -> fId: "Name": { "fid": "0x17" }
+l3_fids.json — имя сообщения -> fId и минимальная длина: "Name": { "fid": "0x17", "min_length": 4 }
+	min_length — сколько байт (с fId) должно быть в сообщении, чтобы обработчик мог читать свой заголовок.
+	Короче — сообщение отбрасывается с записью в лог, остальные сообщения пакета разбираются дальше
 */
 
 const crypto = require('crypto');
@@ -87,7 +89,12 @@ class L3Packet extends EventEmitter
 		this.keys = new Map(cfg.keys.map((k) => [this._hex(k.sn, 8).toString('hex'), this._hex(k.key, 32)]));
 
 		this.fid = {};
-		for(const [name, d] of Object.entries(FIDS)) this.fid[name] = Number(d.fid);
+		this.min_length = new Map();	// fId -> минимальная длина сообщения
+		for(const [name, d] of Object.entries(FIDS))
+		{
+			this.fid[name] = Number(d.fid);
+			if(d.min_length !== undefined) this.min_length.set(Number(d.fid), d.min_length);
+		}
 
 		this.rx_buf = Buffer.alloc(Math.max(4096, 4 * (HEADER_LEN + this.payload_max + CRC_LEN)));
 		this.rx_len = 0;
@@ -455,7 +462,12 @@ class L3Packet extends EventEmitter
 				}
 				case FID_ACCEPT: this._accept(); break;
 				case FID_PING: this._send(PING); break;
-				default: this.emit('message', msg[0], Buffer.from(msg));
+				default:
+				{
+					const min = this.min_length.get(msg[0]) ?? 1;
+					if(msg.length < min) { log('сообщение fId 0x' + msg[0].toString(16) + ': ' + msg.length + ' байт, минимум ' + min + ' — пропущено: ' + this._hexStr(msg)); break; }
+					this.emit('message', msg[0], Buffer.from(msg));
+				}
 			}
 		}
 	}

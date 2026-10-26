@@ -4,23 +4,23 @@
 //   off(); // отписаться
 //
 // subscribe()/unsubscribe() ничего не отправляют сами — они кладут id в очередь,
-// а flush() отправляет всю очередь в конце текущей задачи ОДНИМ WS-сообщением.
+// а flush() отправляет всю очередь (и подписку, и отписку) в конце текущей задачи ОДНИМ WS-сообщением CanSub.
 // Открытие вкладки создаёт все её виджеты за одну задачу, поэтому вся вкладка уходит одним сообщением.
 // Деление на пакеты по размеру (протокол L3 с ESP) делает сервер, здесь его нет.
 //
 // Правила:
-//   - подписались        → id в очередь CANIDSub (сервер в ответ пришлёт текущее состояние obj);
-//   - ушёл последний     → id в очередь CANIDUnsub;
-//   - соединение открылось (первый раз или после обрыва) → CANIDSub на все obj из списка;
+//   - подписались        → id в очередь подписки (сервер в ответ пришлёт текущее состояние obj);
+//   - ушёл последний     → id в очередь отписки;
+//   - соединение открылось (первый раз или после обрыва) → подписка на все obj из списка;
 //   - нет соединения     → ничего не отправляется, всё уйдёт при открытии.
 
-import { WSEvents, WSSubscribe, WSUnsubscribe } from '../utils/ws.js';
+import { WSEvents, WSCanSub } from '../utils/ws.js';
 import { log } from '../utils/loghtml.js';
 
 const handlers = new Map(); // obj id -> [функция, функция, ...]
 
-const queueSub = new Set();   // ждут отправки CANIDSub
-const queueUnsub = new Set(); // ждут отправки CANIDUnsub
+const queueSub = new Set();   // ждут подписки
+const queueUnsub = new Set(); // ждут отписки
 let flushPlanned = false;
 
 export function subscribe(id, fn)
@@ -66,14 +66,13 @@ function flush()
 	queueSub.clear();
 
 	// Нет связи — не уйдёт; при открытии подпишемся на всё заново
-	if(unsub.length > 0) WSUnsubscribe(unsub);
-	if(sub.length > 0) WSSubscribe(sub);
+	if(sub.length > 0 || unsub.length > 0) WSCanSub(sub, unsub);
 }
 
 // Соединение открылось — сервер ничего не помнит, подписываемся на всё заново.
 WSEvents.addEventListener('open', () =>
 {
-	if(handlers.size > 0) WSSubscribe([...handlers.keys()]);
+	if(handlers.size > 0) WSCanSub([...handlers.keys()], []);
 });
 
 // Пришёл пакет — раздаём всем подписанным на этот obj.

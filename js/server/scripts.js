@@ -33,7 +33,7 @@ const READ_RESP_HEADER_LEN = RESP_HEADER_LEN + 4;	// + id u16, offset u16
 const LIST_ENTRY_LEN = 5;							// id u16, length u16, flags u8
 const LIST_END = 0xFFFF;
 
-const STEP_TIMEOUT_MS = 1000;				// ожидание ответа на один запрос
+const STEP_TIMEOUT_MS = 1100;				// ожидание ответа на один запрос
 const RELOAD_TIMEOUT_MS = STEP_TIMEOUT_MS * 5;	// RELOAD читает все скрипты из флеш-памяти — долго
 
 const STATUS_TEXT =

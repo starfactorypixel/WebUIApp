@@ -14,7 +14,7 @@ import { RangeWidget } from './client/widgets/range.js';
 import { CellBalanceWidget } from './client/widgets/cellbalance.js';
 
 // Сколько ждать ответ 0x65 на команду (мс). У виджета можно переопределить: config.timeout.
-Control.timeout = 2000;
+Control.timeout = 1100;
 
 // 1. Регистрируем все известные типы виджетов в одном месте.
 //    Чтобы добавить новый тип — создать файл widgets/xxx.js и добавить сюда одну строку.

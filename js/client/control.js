@@ -8,7 +8,7 @@
 //   failed  — obj, не подтвердившие последнюю команду
 //
 // Как работает команда:
-//   1. send() отправляет её во все obj и запускает таймер.
+//   1. send() отправляет её во все obj одним WS-сообщением (сервер — одним пакетом L3) и запускает таймер.
 //   2. Каждый ответ 0x65 убирает obj из waiting. Для SET ответ должен быть равен target,
 //      иначе obj попадает в failed.
 //   3. Ответили все или сработал таймер → finish(): кто не ответил — в failed,
@@ -21,7 +21,7 @@
 //   - у группы obj ответы разные (например, TOGGLE развёл их в разные состояния).
 
 import { readNumberFromArray, writeNumberToArray } from '../utils/parse.js';
-import { WSSendCanMsg } from '../utils/ws.js';
+import { WSSendCanMsgBatch } from '../utils/ws.js';
 import { log } from '../utils/loghtml.js';
 
 const FID_SET    = 0x01;
@@ -33,7 +33,7 @@ const hex = id => '0x' + id.toString(16).toUpperCase().padStart(4, '0');
 
 export class Control
 {
-	static timeout = 2000; // мс, общий таймаут; у виджета можно задать config.timeout
+	static timeout = 1100; // мс, общий таймаут; у виджета можно задать config.timeout
 
 	constructor(ids, config, onChange)
 	{
@@ -95,10 +95,14 @@ export class Control
 		this.answers.clear();
 		this.notSent.clear();
 
-		for(const id of this.ids)
+		// Всем obj одним WS-сообщением — сервер упакует в минимум пакетов L3
+		if(WSSendCanMsgBatch(this.ids.map(id => ({ id, bytes }))))
 		{
-			if(WSSendCanMsg(id, bytes)) this.waiting.add(id);
-			else { this.failed.push(id); this.notSent.add(id); } // нет связи — не ушло
+			for(const id of this.ids) this.waiting.add(id);
+		}
+		else
+		{
+			for(const id of this.ids) { this.failed.push(id); this.notSent.add(id); } // нет связи — не ушло
 		}
 
 		if(this.waiting.size === 0) this.finish(); // не ушло никуда — ждать нечего

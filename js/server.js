@@ -4,14 +4,15 @@
 //   node js/server.js
 //
 // Подписки (раздел «Подписки» ниже):
+//   - браузер шлёт подписку и отписку одной командой CanSub { sub: [id…], unsub: [id…] };
 //   - сервер помнит, на какие obj подписан каждый WS-клиент, и шлёт ему CanMsg только этих obj;
 //   - подписка от клиента всегда уходит в ESP (повторная безвредна, ESP ответит текущим состоянием);
 //   - отписка уходит в ESP, только если obj больше не нужен ни одному клиенту;
 //   - клиент закрыл WS — его obj снимаются по тому же правилу;
 //   - ESP заново принял подключение (L3 'connect') — подписка на все нужные obj заново.
 //
-// Упаковка в пакеты L3 — забота только сервера. Браузер шлёт сколько угодно id или сообщений
-// одним WS-сообщением, сервер раскладывает их по пакетам L3 (сообщение не больше obj_l3.msg_max байт).
+// Упаковка в пакеты L3 — забота только сервера. Одна WS-команда — сообщения подряд (add) и один commit:
+// всё, что пришло одной командой, уходит в минимум пакетов L3 (сообщение не больше obj_l3.msg_max байт).
 
 const config = require('../data/server.json');
 
@@ -30,6 +31,15 @@ const { Scripts } = require('./server/scripts.js');
 
 const obj_serial = new SerialPort({ path: config.serial.port, baudRate: config.serial.speed, autoOpen: false });
 const obj_wss = new WebSocket.Server({ port: config.ws.port });
+
+// Порт WS занят (обычно — сервер уже запущен) или недоступен: без него работать нечем
+obj_wss.on('error', (err) =>
+{
+	if(err.code === 'EADDRINUSE') log_ws('ОШИБКА: порт ' + config.ws.port + ' занят — сервер уже запущен? (server.json → ws.port)');
+	else log_ws('ОШИБКА: ' + err.message);
+	process.exitCode = 1;
+	process.exit();
+});
 const obj_l3 = new L3Packet(config, obj_serial);
 const log_scripts = Log.source('scripts');
 const scripts = new Scripts(obj_l3, log_scripts);
@@ -114,34 +124,26 @@ function HandleWSCommand(ws, msg)
 {
 	switch(msg.cmd)
 	{
-		// Подписка: { cmd: 'CANIDSub', data: [id, ...] } — сколько угодно id
-		case 'CANIDSub':
-			ClientSubscribe(ws, msg.data);
+		// Подписка и отписка: { cmd: 'CanSub', data: { sub: [id…], unsub: [id…] } } — сколько угодно id
+		case 'CanSub':
+			ClientCanSub(ws, msg.data.sub, msg.data.unsub);
 			break;
 
-		// Отписка: { cmd: 'CANIDUnsub', data: [id, ...] }
-		case 'CANIDUnsub':
-			ClientUnsubscribe(ws, msg.data);
-			break;
-
-		// Команда объекту CAN:
-		//   { cmd: 'CanMsg', data: { id, bytes } }            — отдельным пакетом L3
-		//   { cmd: 'CanMsg', data: [{ id, bytes }, ...] }     — упаковать в минимум пакетов L3
+		// Команды объектам CAN:
+		//   { cmd: 'CanMsg', data: { id, bytes } }            — одно сообщение
+		//   { cmd: 'CanMsg', data: [{ id, bytes }, ...] }     — группа: упаковать в минимум пакетов L3
 		case 'CanMsg':
-			if(Array.isArray(msg.data))
-			{
-				for(const m of msg.data) obj_l3.add(BuildCanMsg(m.id, m.bytes));
-				obj_l3.commit();
-			}
-			else
-			{
-				obj_l3.send(BuildCanMsg(msg.data.id, msg.data.bytes));
-			}
+		{
+			const list = Array.isArray(msg.data) ? msg.data : [msg.data];
+			for(const m of list) obj_l3.add(BuildCanMsg(m.id, m.bytes));
+			obj_l3.commit();
 			break;
+		}
 
-		// Одно сообщение [fId][данные…] отдельным пакетом L3: { cmd: 'Raw', data: { bytes: [] } }
+		// Одно сообщение L3 как есть [fId][данные…]: { cmd: 'Raw', data: { bytes: [] } }
 		case 'Raw':
-			obj_l3.send(msg.data.bytes);
+			obj_l3.add(msg.data.bytes);
+			obj_l3.commit();
 			break;
 
 		// Скрипты ESP (SCRIPTS_PROTOCOL.md): ответ { cmd: cmd + 'Resp', data } — только этому клиенту
@@ -186,21 +188,15 @@ function IsNeeded(id)
 	return false;
 }
 
-function ClientSubscribe(ws, ids)
+// Подписка — всегда в ESP: если obj уже подписан, ESP просто пришлёт текущее состояние.
+// Отписка — только obj, которые больше не нужны ни одному клиенту
+function ClientCanSub(ws, sub, unsub)
 {
 	const own = clientSubs.get(ws);
-	for(const id of ids) own.add(id);
+	for(const id of unsub) own.delete(id);
+	for(const id of sub) own.add(id);
 
-	// Всегда в ESP: если obj уже подписан, ESP просто пришлёт текущее состояние
-	SendCanSub(ids, false);
-}
-
-function ClientUnsubscribe(ws, ids)
-{
-	const own = clientSubs.get(ws);
-	for(const id of ids) own.delete(id);
-
-	SendCanSub(ids.filter(id => !IsNeeded(id)), true);
+	SendCanSub(sub, unsub.filter(id => !IsNeeded(id)));
 }
 
 function ClientClosed(ws)
@@ -208,7 +204,7 @@ function ClientClosed(ws)
 	const ids = [...clientSubs.get(ws)];
 	clientSubs.delete(ws);
 
-	SendCanSub(ids.filter(id => !IsNeeded(id)), true);
+	SendCanSub([], ids.filter(id => !IsNeeded(id)));
 }
 
 // ESP заново принял подключение (перезапуск, обрыв UART): его подписки потеряны — подписываемся на всё
@@ -219,27 +215,25 @@ obj_l3.on('connect', () =>
 		for(const id of ids) all.add(id);
 
 	if(all.size > 0) console.log('ESP подключён — переподписка на ' + all.size + ' obj');
-	SendCanSub([...all], false);
+	SendCanSub([...all], []);
 });
 
-// Подписка/отписка в ESP. Сообщения L3 делятся по размеру пакета: [fId][count][id u16] × count
-function SendCanSub(ids, unsub)
+// Подписка и отписка в ESP одним пакетом (или минимумом пакетов): сообщения L3 CanSub [fId][count][id u16] × count,
+// у отписки в id стоит бит 0x8000. Отписка и подписка идут в одних и тех же сообщениях, сначала отписка
+function SendCanSub(sub, unsub)
 {
-	if(ids.length === 0) return;
+	const values = [...unsub.map(id => id | CANSUB_UNSUB_BIT), ...sub.map(id => id & ~CANSUB_UNSUB_BIT)];
+	if(values.length === 0) return;
 
 	const per_msg = Math.min(CANSUB_COUNT_MAX, Math.floor((obj_l3.msg_max - CANSUB_HEADER_LEN) / CANSUB_ID_LEN));
 
-	for(let i = 0; i < ids.length; i += per_msg)
+	for(let i = 0; i < values.length; i += per_msg)
 	{
-		const part = ids.slice(i, i + per_msg);
+		const part = values.slice(i, i + per_msg);
 		const msg = Buffer.alloc(CANSUB_HEADER_LEN + part.length * CANSUB_ID_LEN);
 		msg[0] = obj_l3.fid.CanSub;
 		msg[1] = part.length;
-		part.forEach((id, index) =>
-		{
-			const value = unsub ? (id | CANSUB_UNSUB_BIT) : (id & ~CANSUB_UNSUB_BIT);
-			msg.writeUInt16LE(value, CANSUB_HEADER_LEN + index * CANSUB_ID_LEN);
-		});
+		part.forEach((value, index) => msg.writeUInt16LE(value, CANSUB_HEADER_LEN + index * CANSUB_ID_LEN));
 
 		obj_l3.add(msg);
 	}
@@ -261,7 +255,8 @@ function BuildCanMsg(id, bytes)
 // ================================================================ Сообщения от ESP
 
 // В одном пакете L3 может быть несколько прикладных сообщений, L3Packet делит их по len перед каждым
-// и вызывает 'message' на каждое. Неизвестный fId забирает остаток пакета целиком.
+// и вызывает 'message' на каждое. Сообщения короче min_length из l3_fids.json сюда не доходят,
+// поэтому заголовок своего типа можно читать без проверки длины. Типы не из l3_fids.json — браузеру как Raw.
 obj_l3.on('message', (fId, data) =>
 {
 	if(fId === obj_l3.fid.Script)

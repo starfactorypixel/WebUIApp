@@ -31,7 +31,7 @@ const CMD_WRITE = 0x02;
 const CMD_SAVE  = 0x03;
 const CMD_ERROR = 0x04;
 
-const REQUEST_TIMEOUT_MS = 2000;
+const REQUEST_TIMEOUT_MS = 1100;
 
 export class BlockParams
 {

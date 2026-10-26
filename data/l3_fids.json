@@ -1,5 +1,5 @@
 {
-  "CanSub": { "fid": "0x12" },
-  "Script": { "fid": "0x1B" },
-  "CanMsg": { "fid": "0x35" }
+  "CanSub": { "fid": "0x12", "min_length": 2 },
+  "Script": { "fid": "0x1B", "min_length": 3 },
+  "CanMsg": { "fid": "0x35", "min_length": 4 }
 }

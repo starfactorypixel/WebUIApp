@@ -191,16 +191,13 @@ export function WSSendRaw(bytes)
 	return ok;
 }
 
-export function WSSubscribe(ids)
+/**
+ * Подписка и отписка одним WS-сообщением: { cmd: 'CanSub', data: { sub: [id…], unsub: [id…] } }.
+ * Сервер кладёт обе в одни и те же сообщения L3 CanSub — одним пакетом, сначала отписка.
+ */
+export function WSCanSub(sub, unsub)
 {
-	if(!Array.isArray(ids))
-		throw new TypeError('WSSubscribe: ids must be an Array');
-	return WSSend({ cmd: 'CANIDSub', data: ids });
-}
-
-export function WSUnsubscribe(ids)
-{
-	if(!Array.isArray(ids))
-		throw new TypeError('WSUnsubscribe: ids must be an Array');
-	return WSSend({ cmd: 'CANIDUnsub', data: ids });
+	if(!Array.isArray(sub) || !Array.isArray(unsub))
+		throw new TypeError('WSCanSub: sub and unsub must be Arrays');
+	return WSSend({ cmd: 'CanSub', data: { sub, unsub } });
 }
