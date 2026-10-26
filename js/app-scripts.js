@@ -31,14 +31,14 @@ const ops = new ScriptOps({
 		switch(cmd)
 		{
 			case 'ScriptLoadResp':   editor.Set(data.id, data.data); list.Mark(data.id); break;
-			case 'ScriptListResp':   list.Show(data.scripts); break;
+			case 'ScriptListResp':   list.Show(data.scripts, data.reload_needed); break;
 			case 'ScriptEnableResp': list.SetFlags(data.id, data.flags); break;
 			default:                 ops.List();	// записан, удалён, перезагружены — список изменился
 		}
 	},
 });
 
-const list = new ScriptList(document.getElementById('list_body'), document.getElementById('list_info'), {
+const list = new ScriptList(document.getElementById('list_body'), document.getElementById('list_info'), document.getElementById('list_reload'), {
 	onOpen: (id) => { editor.SetId(id); ops.Load(id); },
 	onEnable: (id, on) => ops.Enable(id, on),
 });

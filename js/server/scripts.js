@@ -39,14 +39,13 @@ const STATUS_TEXT =
 {
 	[-1]: 'неверный запрос',
 	[-2]: 'неверный ID скрипта',
-	[-3]: 'скрипта нет',
+	[-3]: 'скрипт не загружен в память ESP',
 	[-4]: 'скрипт слишком длинный',
 	[-5]: 'неверное смещение данных',
 	[-6]: 'запись не начата',
 	[-7]: 'контрольная сумма не совпала',
 	[-8]: 'приняты не все данные',
-	[-9]: 'ошибка флеш-памяти',
-	[-10]: 'не хватило памяти ESP',
+	[-9]: 'ошибка записи во флеш-память',
 };
 
 
@@ -175,21 +174,23 @@ class Scripts
 		return this.#run('список', async () =>
 		{
 			const scripts = [];
+			let reload_needed = false;
 			let from = 0;
 
 			while(from !== LIST_END)
 			{
-				const r = await this.#request(CMD.LIST, U16(from));	// next, записи
-				const next = r.readUInt16LE(0);
+				const r = await this.#request(CMD.LIST, U16(from));	// reload_needed, next, записи
+				reload_needed = r[0] !== 0;
+				const next = r.readUInt16LE(1);
 
-				for(let o = 2; o + LIST_ENTRY_LEN <= r.length; o += LIST_ENTRY_LEN)
+				for(let o = 3; o + LIST_ENTRY_LEN <= r.length; o += LIST_ENTRY_LEN)
 					scripts.push({ id: r.readUInt16LE(o), length: r.readUInt16LE(o + 2), flags: r[o + 4] });
 
 				if(next !== LIST_END && next <= from) throw new Error('ESP вернул неверное продолжение списка');
 				from = next;
 			}
 
-			return { scripts };
+			return { scripts, reload_needed };
 		});
 	}
 

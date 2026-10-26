@@ -63,15 +63,20 @@
 	background: #e3ecfe;
 }
 
-/* Отключён или не загружен в PSRAM */
+/* Отключён */
 .script_list tr.is-off td:first-child,
 .script_list tr.is-off td:nth-child(2) {
 	color: #999;
 }
 
-.script_list tr.is-unloaded td:first-child::after {
-	content: ' ⚠';
-	color: #ef6c00;
+/* Флеш-память изменена, нужна перезагрузка скриптов */
+.list_reload {
+	margin: 6px 0;
+	padding: 6px 8px;
+	border-radius: 4px;
+	background: #fff3e0;
+	color: #e65100;
+	font-size: 13px;
 }
 
 .script_id {

@@ -12,15 +12,16 @@
 
 <div class="scripts">
 
-	<!-- Скрипты в ESP: клик по строке — открыть, галочка — включить/отключить -->
+	<!-- Скрипты в памяти ESP (то, что исполняется): клик по строке — открыть, галочка — включить/отключить -->
 	<div class="panel script_list">
 		<div class="panel_head">
 			<div>
-				<div class="panel_title">В ESP</div>
+				<div class="panel_title">В памяти ESP</div>
 				<div class="panel_desc" id="list_info">—</div>
 			</div>
 			<button data-cmd="list" title="Обновить список">⟳</button>
 		</div>
+		<div class="list_reload" id="list_reload" hidden>Флеш-память изменена — чтобы изменения заработали, нажмите «⟳ Перезагрузить все скрипты»</div>
 		<table>
 			<thead><tr><th>ID</th><th>Байт</th><th title="Включён">Вкл</th></tr></thead>
 			<tbody id="list_body"></tbody>

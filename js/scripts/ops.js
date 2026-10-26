@@ -4,7 +4,7 @@
 //   ScriptSave {id, data}   ← ScriptSaveResp   {id}
 //   ScriptDelete {id}       ← ScriptDeleteResp {id}
 //   ScriptReload {}         ← ScriptReloadResp {count}
-//   ScriptList {}           ← ScriptListResp   {scripts: [{id, length, flags}]}
+//   ScriptList {}           ← ScriptListResp   {scripts: [{id, length, flags}], reload_needed}
 //   ScriptEnable {id, on}   ← ScriptEnableResp {id, flags}
 //   во время чтения/записи  ← ScriptProgress   {done, total}
 // Ошибка — поле error в ответе (пишется в лог, onResult не вызывается).
@@ -17,7 +17,6 @@ import { Int2Hex } from '../utils/format.js';
 
 const OP_TIMEOUT_MS = 15000;	// сервер сам ограничивает каждый шаг; это — страховка
 
-export const FLAG_LOADED = 0x02;
 export const FLAG_ENABLED = 0x04;
 
 export class ScriptOps
@@ -101,8 +100,8 @@ export class ScriptOps
 		switch(cmd)
 		{
 			case 'ScriptLoadResp':   log.info(`[Скрипты] ${name} прочитан: ${data.data.length} байт`); break;
-			case 'ScriptSaveResp':   log.info(`[Скрипты] ${name} записан`); break;
-			case 'ScriptDeleteResp': log.info(`[Скрипты] ${name} удалён`); break;
+			case 'ScriptSaveResp':   log.info(`[Скрипты] ${name} записан во флеш-память; исполняться будет после перезагрузки скриптов`); break;
+			case 'ScriptDeleteResp': log.info(`[Скрипты] ${name} удалён из флеш-памяти; из памяти ESP уйдёт после перезагрузки скриптов`); break;
 			case 'ScriptReloadResp': log.info(`[Скрипты] ESP перечитал скрипты из флеш-памяти: загружено ${data.count}`); break;
 			case 'ScriptEnableResp': log.info(`[Скрипты] ${name} ${data.flags & FLAG_ENABLED ? 'включён' : 'отключён'}`); break;
 		}
