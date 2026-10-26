@@ -34,6 +34,7 @@ const LIST_ENTRY_LEN = 5;							// id u16, length u16, flags u8
 const LIST_END = 0xFFFF;
 
 const STEP_TIMEOUT_MS = 1000;				// ожидание ответа на один запрос
+const RELOAD_TIMEOUT_MS = STEP_TIMEOUT_MS * 5;	// RELOAD читает все скрипты из флеш-памяти — долго
 
 const STATUS_TEXT =
 {
@@ -155,7 +156,7 @@ class Scripts
 	{
 		return this.#run('перезагрузка', async () =>
 		{
-			const r = await this.#request(CMD.RELOAD, []);	// count
+			const r = await this.#request(CMD.RELOAD, [], RELOAD_TIMEOUT_MS);	// count
 			return { count: r.readUInt16LE(0) };
 		});
 	}
@@ -214,7 +215,7 @@ class Scripts
 	}
 
 	// Запрос и ожидание ответа с тем же cmd
-	#request(cmd, body)
+	#request(cmd, body, timeout_ms = STEP_TIMEOUT_MS)
 	{
 		return new Promise((resolve, reject) =>
 		{
@@ -226,7 +227,7 @@ class Scripts
 			{
 				this.#wait = null;
 				reject(new Error('нет ответа от ESP'));
-			}, STEP_TIMEOUT_MS);
+			}, timeout_ms);
 
 			this.#wait = { cmd, resolve, reject, timer };
 		});
