@@ -1,6 +1,6 @@
 'use strict';
 /*
-L3Packet — клиент протокола L3 (связь с ESP32 по UART). Описание протокола — L3_client_guide.md.
+L3Packet — клиент протокола L3 (связь с ESP32 по UART). Описание протокола — PROTOCOL_SERVER_ESP.md.
 
 	const l3 = new L3Packet(config, serialPort);		// config.l3 + config.serial.debug; сам читает порт и пишет в него
 	l3.add(msg); l3.add(msg); l3.commit();				// сообщения подряд в пакет, как AddPacket/Commit в ESP
@@ -306,8 +306,8 @@ class L3Packet extends EventEmitter
 	}
 
 	/*
-	Поиск кадров с позиции p (§11): 'P','X', заголовок, LEN <= 92, 8 + LEN байт, CRC.
-	LEN > 92 или CRC не сошёлся — кандидат ложный, поиск со следующего байта (внутри мог начаться настоящий кадр).
+	Поиск кадров с позиции p: 'P','X', заголовок, LEN <= payload_max, 8 + LEN байт, CRC.
+	LEN > payload_max или CRC не сошёлся — кандидат ложный, поиск со следующего байта (внутри мог начаться настоящий кадр).
 	Недособранный хвост переносится в начало буфера; не дособран за frame_timeout_ms — тоже ложный.
 	*/
 	_parse(p)
@@ -377,7 +377,7 @@ class L3Packet extends EventEmitter
 		this._parse(1);
 	}
 
-	// Кадр с верным CRC. Проверки по §5: заголовок -> тег -> instance -> сеанс -> N
+	// Кадр с верным CRC. Проверки (PROTOCOL_SERVER_ESP.md, раздел 5): заголовок -> тег -> instance -> сеанс -> N
 	_onFrame(f)
 	{
 		if(this.debug.rx_raw) log('rx_raw: ' + this._hexStr(f));

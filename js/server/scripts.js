@@ -1,5 +1,5 @@
 'use strict';
-// Скрипты ESP по L3 — серверная сторона протокола (SCRIPTS_PROTOCOL.md).
+// Скрипты ESP по L3 — сторона клиента протокола (PROTOCOL_SERVER_ESP.md, раздел 9; реализация — SCRIPTS_PROTOCOL.md).
 //
 //   const scripts = new Scripts(obj_l3, log);
 //   const result = await scripts.Load(id, onProgress);   // ошибка — исключение с понятным текстом
