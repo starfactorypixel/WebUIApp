@@ -3,8 +3,8 @@
 
 import { log } from '../utils/loghtml.js';
 import { parseHexBytes } from '../utils/parse.js';
-import { Int2Hex } from '../utils/format.js';
-import { Disassemble } from './disasm.js';
+import { Int2Hex, escapeHtml } from '../utils/format.js';
+import { Disassemble, Addr } from './disasm.js';
 
 const SCRIPT_ID_MAX = 0x7FF;		// 2048 скриптов в ESP (ScriptLogic::SCRIPTS_COUNT)
 const SCRIPT_LEN_MAX = 4096 - 16;	// сектор флеш-памяти минус заголовок (nor_script_header_h)
@@ -70,14 +70,14 @@ export class ScriptEditor
 		this.ShowInfo();
 	}
 
-	// Байты для записи: { data, unknown } или null (пусто / слишком длинный — в лог)
+	// Байты для записи: { data, error } или null (пусто / слишком длинный — в лог). error — первая ошибка разбора или null
 	ReadBytes()
 	{
 		const data = parseHexBytes(this.#text.value);
 		if(data.length === 0) { log.warn('[Скрипты] Нечего записывать: в редакторе нет байт'); return null; }
 		if(data.length > SCRIPT_LEN_MAX) { log.warn(`[Скрипты] Скрипт ${data.length} байт, максимум ${SCRIPT_LEN_MAX}`); return null; }
 
-		return { data, unknown: Disassemble(data, this.#cfg).unknown };
+		return { data, error: Disassemble(data, this.#cfg).error };
 	}
 
 	// Разобрать: байты из текста → текст с именами команд в комментариях
@@ -112,15 +112,15 @@ export class ScriptEditor
 		this.#info.textContent = text;
 	}
 
-	// Сводка под редактором: размер, команды, неизвестные опкоды
+	// Сводка под редактором: размер, команды, ошибка разбора
 	ShowInfo()
 	{
 		const bytes = parseHexBytes(this.#text.value);
 		if(bytes.length === 0) { this.#info.textContent = ''; return; }
 
-		const { ops, unknown } = Disassemble(bytes, this.#cfg);
+		const { ops, error } = Disassemble(bytes, this.#cfg);
 		const parts = [`${bytes.length} байт`, `${ops} команд`];
-		if(unknown > 0) parts.push(`<span class="is-bad">${unknown} неизвестных опкодов</span>`);
+		if(error) parts.push(`<span class="is-bad">ошибка разбора с адреса ${Addr(error.addr)}: ${escapeHtml(error.message)}</span>`);
 		if(bytes.length > SCRIPT_LEN_MAX) parts.push(`<span class="is-bad">больше ${SCRIPT_LEN_MAX} байт</span>`);
 		this.#info.innerHTML = parts.join(' · ');
 	}

@@ -387,17 +387,18 @@
     },
     {
       "code"  : "0x81",
-      "length": 7,
+      "length": 3,
       "name"  : "Run",
       "format": [ {"name": "id", "type": "uint16", "print": "hex:4"} ]
     },
     {"code": "0x82", "length": 1, "name": "Exit"},
     {
       "code"  : "0xA0",
-      "length": 11,
+      "length": 12,
       "name"  : "CanSendRaw11",
       "format": [
         {"name": "CanId", "type": "can_id"                  },
+        {"name": "length", "type": "uint8", "max": 8},
         {"name": "d0",    "type": "uint8",  "print": "hex:2"},
         {"name": "d1",    "type": "uint8",  "print": "hex:2"},
         {"name": "d2",    "type": "uint8",  "print": "hex:2"},
@@ -410,10 +411,11 @@
     },
     {
       "code"  : "0xA1",
-      "length": 8,
+      "length": 9,
       "name"  : "CanSendRegVal11",
       "format": [
         {"name": "CanId", "type": "can_id"},
+        {"name": "length", "type": "uint8", "max": 8},
         {"name": "fId", "type": "uint8", "print": "hex:2"},
         {"name": "type", "type": "enum", "enum": "dataType"},
         {"name": "reg", "type": "reg"},

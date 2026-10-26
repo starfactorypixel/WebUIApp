@@ -10,6 +10,7 @@ import { Int2Hex } from './utils/format.js';
 import { ScriptOps } from './scripts/ops.js';
 import { ScriptList } from './scripts/list.js';
 import { ScriptEditor } from './scripts/editor.js';
+import { Addr } from './scripts/disasm.js';
 import drake_script from '../data/drake_script.json' with { type: 'json' };
 
 const root = document.querySelector('.scripts');
@@ -57,7 +58,7 @@ function Save()
 	const bytes = editor.ReadBytes();
 	if(bytes === null) return;
 
-	if(bytes.unknown > 0 && !confirm(`В скрипте ${bytes.unknown} неизвестных опкодов. Всё равно записать?`)) return;
+	if(bytes.error && !confirm(`Скрипт сломан с адреса ${Addr(bytes.error.addr)}: ${bytes.error.message}.\nИсполнение на ESP там остановится. Всё равно записать?`)) return;
 	const exists = list.Has(id) ? ' Скрипт с этим ID уже есть и будет заменён.' : '';
 	if(!confirm(`Записать скрипт ${Int2Hex(id, 4)} (${bytes.data.length} байт) в ESP?${exists}`)) return;
 
