@@ -13,7 +13,9 @@ import { sprintfNamed, escapeHtml } from '../../utils/format.js';
 //
 // Пакет в каждый obj (mode):
 //   "set"      — [0x01, value]            (SET, как у range)
-//   "realtime" — [0x0A, counter, value]   counter — uint8 своего obj, +1 на каждый пакет (после 255 — 0)
+//   "realtime" — [0x0A, counter, value]   counter — uint8 своего obj, +1 на каждый пакет (после 255 — 0).
+//                                         Устройство проверяет его только внутри непрерывного потока;
+//                                         после паузы > 3 × interval начинать можно с любого значения
 // value — по config.type, little-endian, raw = значение ползунка × scale.
 //
 // «Отпустили» — это и отпускание мыши/пальца (даже за пределами ползунка), и отпускание клавиши,
@@ -24,6 +26,8 @@ import { sprintfNamed, escapeHtml } from '../../utils/format.js';
 const FID_SET = 0x01;
 const FID_REALTIME = 0x0A;
 const DEFAULT_INTERVAL_MS = 100;
+
+const counters = new Map();	// obj → следующий counter (realtime); один на obj для всех виджетов страницы
 
 export class LiveControlWidget extends UIWidget
 {
@@ -48,7 +52,6 @@ export class LiveControlWidget extends UIWidget
 			console.warn(`[Виджеты] livecontrol: не задан default, используется min = ${this.min}`, this.element);
 		this.default = Math.min(this.max, Math.max(this.min, c.default ?? this.min));
 
-		this.counters = new Map(this.ids.map(id => [id, 0]));	// realtime: счётчик каждого obj
 		this.timer = null;		// пока держим — таймер отправки
 
 		this.element.innerHTML =
@@ -141,8 +144,8 @@ export class LiveControlWidget extends UIWidget
 		{
 			if(!this.realtime) return { id, bytes: [FID_SET, ...value] };
 
-			const counter = this.counters.get(id);
-			this.counters.set(id, (counter + 1) & 0xFF);
+			const counter = counters.get(id) ?? 0;
+			counters.set(id, (counter + 1) & 0xFF);
 			return { id, bytes: [FID_REALTIME, counter, ...value] };
 		});
 
