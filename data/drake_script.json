@@ -24,25 +24,21 @@
     },
     {
       "code"  : "0x03",
-      "length": 7,
+      "length": 5,
       "name"  : "SetScriptArgVal",
       "format": [
-        {"name": "id", "type": "uint16", "print": "hex:4"},
-        {"name": "d1", "type": "uint8",  "print": "hex:2"},
-        {"name": "d2", "type": "uint8",  "print": "hex:2"},
-        {"name": "d3", "type": "uint8",  "print": "hex:2"},
-        {"name": "d4", "type": "uint8",  "print": "hex:2"}
+        {"name": "id",  "type": "uint16", "print": "hex:4"},
+        {"name": "idx", "type": "uint8"                   },
+        {"name": "val", "type": "uint8",  "print": "hex:2"}
       ]
     },
     {
       "code"  : "0x04",
-      "length": 7,
+      "length": 5,
       "name"  : "SetScriptArgReg8",
       "format": [
         {"name": "id",  "type": "uint16", "print": "hex:4"},
-        {"name": "reg", "type": "reg"                     },
-        {"name": "reg", "type": "reg"                     },
-        {"name": "reg", "type": "reg"                     },
+        {"name": "idx", "type": "uint8"                   },
         {"name": "reg", "type": "reg"                     }
       ]
     },
@@ -397,16 +393,16 @@
       "length": 12,
       "name"  : "CanSendRaw11",
       "format": [
-        {"name": "CanId", "type": "can_id"                  },
-        {"name": "length", "type": "uint8", "max": 8},
-        {"name": "d0",    "type": "uint8",  "print": "hex:2"},
-        {"name": "d1",    "type": "uint8",  "print": "hex:2"},
-        {"name": "d2",    "type": "uint8",  "print": "hex:2"},
-        {"name": "d3",    "type": "uint8",  "print": "hex:2"},
-        {"name": "d4",    "type": "uint8",  "print": "hex:2"},
-        {"name": "d5",    "type": "uint8",  "print": "hex:2"},
-        {"name": "d6",    "type": "uint8",  "print": "hex:2"},
-        {"name": "d7",    "type": "uint8",  "print": "hex:2"}
+        {"name": "CanId",  "type": "can_id"                            },
+        {"name": "length", "type": "uint8",  "max": 8                  },
+        {"name": "d0",     "type": "uint8",            "print": "hex:2"},
+        {"name": "d1",     "type": "uint8",            "print": "hex:2"},
+        {"name": "d2",     "type": "uint8",            "print": "hex:2"},
+        {"name": "d3",     "type": "uint8",            "print": "hex:2"},
+        {"name": "d4",     "type": "uint8",            "print": "hex:2"},
+        {"name": "d5",     "type": "uint8",            "print": "hex:2"},
+        {"name": "d6",     "type": "uint8",            "print": "hex:2"},
+        {"name": "d7",     "type": "uint8",            "print": "hex:2"}
       ]
     },
     {
