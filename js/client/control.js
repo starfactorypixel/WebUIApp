@@ -41,6 +41,7 @@ export class Control
 		this.name = config.name || hex(ids[0]); // для лога
 		this.type = config.type || 'uint8';
 		this.timeout = config.timeout ?? Control.timeout;
+		this.debug = !!config.debug; // "debug": true — отправленные пакеты в лог (принятые пишет виджет)
 		this.onChange = onChange; // вызывается при любом изменении — виджет перерисовывается
 
 		this.values = new Map();
@@ -96,8 +97,10 @@ export class Control
 		this.notSent.clear();
 
 		// Всем obj одним WS-сообщением — сервер упакует в минимум пакетов L3
-		if(WSSendCanMsgBatch(this.ids.map(id => ({ id, bytes }))))
+		const msgs = this.ids.map(id => ({ id, bytes }));
+		if(WSSendCanMsgBatch(msgs))
 		{
+			if(this.debug) for(const m of msgs) log.packet(this.name, '→', m.id, m.bytes);
 			for(const id of this.ids) this.waiting.add(id);
 		}
 		else

@@ -1,5 +1,7 @@
 import { readNumberFromArray } from '../../utils/parse.js';
 import { subscribe } from '../subscriptions.js';
+import { WSSendCanMsgBatch } from '../../utils/ws.js';
+import { log } from '../../utils/loghtml.js';
 
 export class UIWidget
 {
@@ -49,9 +51,29 @@ export class UIWidget
 	 */
 	Subscribe(id = this.id, handler = (data, pid) => this.Update(data, pid))
 	{
-		const off = subscribe(id, handler);
+		// "debug": true в config — каждый принятый пакет в лог
+		const target = this.config.debug ? (data, pid) => { this.DebugPacket('←', pid, data); handler(data, pid); } : handler;
+		const off = subscribe(id, target);
 		this.#unsubs.push(off);
 		return off; // можно отписаться и раньше, вручную
+	}
+
+	/**
+	 * Отправка пакетов объектам — только через этот метод (не через ws.js напрямую),
+	 * чтобы работал "debug": true в config. Все сообщения — одним WS-сообщением, сервер кладёт их в один пакет L3.
+	 * msgs — [{ id, bytes }, ...]. Возвращает false, если нет связи (ничего не ушло).
+	 */
+	SendCanMsgBatch(msgs)
+	{
+		const sent = WSSendCanMsgBatch(msgs);
+		if(sent && this.config.debug) for(const m of msgs) this.DebugPacket('→', m.id, m.bytes);
+		return sent;
+	}
+
+	// Строка отладки: "[имя] → 0x0104: 0A 05 E5 02"
+	DebugPacket(dir, id, bytes)
+	{
+		log.packet(this.config.name || this.constructor.type, dir, id, bytes);
 	}
 
 	UnsubscribeAll()

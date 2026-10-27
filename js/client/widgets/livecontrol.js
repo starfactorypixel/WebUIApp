@@ -1,7 +1,6 @@
 import { UIWidget } from './base.js';
 import { writeNumberToArray, typeSize } from '../../utils/parse.js';
 import { sprintfNamed, escapeHtml } from '../../utils/format.js';
-import { WSSendCanMsgBatch } from '../../utils/ws.js';
 
 // Ползунок «живого» управления (газ, руль): значение действует, только пока ползунок держат.
 //
@@ -19,6 +18,8 @@ import { WSSendCanMsgBatch } from '../../utils/ws.js';
 //
 // «Отпустили» — это и отпускание мыши/пальца (даже за пределами ползунка), и отпускание клавиши,
 // и потеря фокуса, и скрытие страницы, и закрытие вкладки с виджетом: значение не должно «залипнуть».
+// Браузеры по-разному фиксируют значение ползунка после отпускания (некоторые — уже после pointerup),
+// поэтому любое изменение значения, пока ползунок не держат, сразу возвращается в default.
 
 const FID_SET = 0x01;
 const FID_REALTIME = 0x0A;
@@ -78,7 +79,10 @@ export class LiveControlWidget extends UIWidget
 		this.onVisibility = () => { if(document.visibilityState !== 'visible') this.Release(); };
 		document.addEventListener('visibilitychange', this.onVisibility);
 
-		this.refs.input.addEventListener('input', () => this.ShowValue());
+		// Значение меняется, только пока держим; иначе — назад в default
+		const onChange = () => { if(this.timer === null) this.SetDefault(); else this.ShowValue(); };
+		this.refs.input.addEventListener('input', onChange);
+		this.refs.input.addEventListener('change', onChange);
 		this.ShowValue();
 	}
 
@@ -110,9 +114,16 @@ export class LiveControlWidget extends UIWidget
 		this.timer = null;
 		this.element.classList.remove('is-active');
 
+		this.SetDefault();
+		this.Send(this.Value());
+		setTimeout(() => { if(this.timer === null) this.SetDefault(); });	// браузер мог дописать значение после отпускания
+	}
+
+	// Ползунок — в default (только вид, без отправки)
+	SetDefault()
+	{
 		this.refs.input.value = this.default;
 		this.ShowValue();
-		this.Send(this.Value());
 	}
 
 	// Текущее значение ползунка в raw (× scale)
@@ -135,7 +146,7 @@ export class LiveControlWidget extends UIWidget
 			return { id, bytes: [FID_REALTIME, counter, ...value] };
 		});
 
-		WSSendCanMsgBatch(msgs);
+		this.SendCanMsgBatch(msgs);
 	}
 
 	ShowValue()

@@ -4,6 +4,7 @@
 //   log.info('[WS] Соединение установлено');
 //   log.warn('[Газ М1+М2] SET 700: 0x0104=700, 0x0105=нет ответа');
 //   log.error('Некорректный JSON в config', el, err);
+//   log.packet('Газ М1+М2', '→', 0x0104, [0x0A, 0x05, 0xE5, 0x02]);   // отладка пакетов ("debug": true в config)
 //
 // Первый аргумент — текст (он попадает на страницу).
 // Остальные аргументы (элементы, ошибки, объекты) — только в консоль, там их удобно раскрыть.
@@ -38,4 +39,12 @@ export const log =
 	info:  (msg, ...extra) => write('info', msg, extra),
 	warn:  (msg, ...extra) => write('warn', msg, extra),
 	error: (msg, ...extra) => write('error', msg, extra),
+
+	// Пакет объекта CAN: "[Газ М1+М2] → 0x0104: 0A 05 E5 02" (→ отправлен, ← принят)
+	packet: (name, dir, id, bytes) => write('info', `[${name}] ${dir} 0x${hex(id, 4)}: ${Array.from(bytes, b => hex(b, 2)).join(' ')}`, []),
 };
+
+function hex(num, pad)
+{
+	return num.toString(16).toUpperCase().padStart(pad, '0');
+}

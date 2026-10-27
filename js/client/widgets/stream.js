@@ -1,7 +1,6 @@
 import { UIWidget } from './base.js';
 import { readNumberFromArray } from '../../utils/parse.js';
 import { sprintfNamed, escapeHtml } from '../../utils/format.js';
-import { WSSendCanMsg } from '../../utils/ws.js';
 
 // Много однотипных значений с одного obj (ячейки АКБ, датчики температуры).
 // Пакет: [fId, number (uint8), value (по type)] — каждый пакет обновляет одну ячейку.
@@ -58,7 +57,7 @@ export class StreamWidget extends UIWidget
 
 	Request()
 	{
-		WSSendCanMsg(this.id, [FID_REQUEST]); // нет связи — просто не уйдёт
+		this.SendCanMsgBatch([{ id: this.id, bytes: [FID_REQUEST] }]); // нет связи — просто не уйдёт
 	}
 
 	Update(rx_data)
