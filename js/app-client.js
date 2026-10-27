@@ -11,6 +11,7 @@ import { MeterWidget } from './client/widgets/meter.js';
 import { StreamWidget } from './client/widgets/stream.js';
 import { RadioWidget } from './client/widgets/radio.js';
 import { RangeWidget } from './client/widgets/range.js';
+import { LiveControlWidget } from './client/widgets/livecontrol.js';
 import { CellBalanceWidget } from './client/widgets/cellbalance.js';
 
 // Сколько ждать ответ 0x65 на команду (мс). У виджета можно переопределить: config.timeout.
@@ -18,7 +19,7 @@ Control.timeout = 1100;
 
 // 1. Регистрируем все известные типы виджетов в одном месте.
 //    Чтобы добавить новый тип — создать файл widgets/xxx.js и добавить сюда одну строку.
-[ButtonWidget, ValueWidget, MeterWidget, StreamWidget, RadioWidget, RangeWidget, CellBalanceWidget].forEach(registerWidget);
+[ButtonWidget, ValueWidget, MeterWidget, StreamWidget, RadioWidget, RangeWidget, LiveControlWidget, CellBalanceWidget].forEach(registerWidget);
 
 // 2. Вкладки: виджеты живут только на открытой вкладке.
 const root = document.getElementById('myTabs');

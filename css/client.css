@@ -125,6 +125,21 @@ ui-element.is-failed {
 	text-align: center;
 }
 
+/* livecontrol: держим — значение уходит в устройство */
+.ui-livecontrol_content input {
+	width: 100%;
+	touch-action: none;	/* палец на ползунке не прокручивает страницу */
+}
+
+.ui-livecontrol_value {
+	text-align: center;
+}
+
+ui-element.is-active {
+	outline: 2px solid #ef6c00;
+	outline-offset: -2px;
+}
+
 /* Нет связи с сервером: данные на экране устаревшие */
 html.ws-offline ui-element {
 	opacity: 0.5;

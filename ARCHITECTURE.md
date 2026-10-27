@@ -76,7 +76,7 @@ js/client/dispatch.js          initWidgets / deinitWidgets по <ui-element>
 js/client/subscriptions.js     подписки: obj → обработчики, очередь (используется и в config.html)
 js/client/control.js           Control: состояние управляемых obj и ожидание ответа
 js/client/widgets/base.js      UIWidget — базовый класс
-js/client/widgets/*.js         value, meter, stream, cellbalance, button, radio, range
+js/client/widgets/*.js         value, meter, stream, cellbalance, button, radio, range, livecontrol
 js/client/widgets/WIDGETS.md   справочник настроек виджетов
 
 esp/ScriptProto.h              ESP32 (C++): обработчик протокола скриптов, подключается в конце ScriptLogic.h
@@ -129,6 +129,7 @@ SCRIPTS_PROTOCOL.md            скрипты в этом проекте: ком
 | `0x02` | к блоку | TOGGLE — блок сам решает, во что переключить (обычно 0x00 ⇄ 0xFF) |
 | `0x03` | к блоку | ACTION — однократное действие |
 | `0x11` | к блоку | запрос всех значений `stream` (кнопка ⟳ или автозапрос по `interval`) |
+| `0x0A counter value` | к блоку | RealTime — «живое» управление (`livecontrol`): пока держат, каждые `interval` мс; `counter` uint8 своего obj, +1 на пакет. Ответа нет |
 | `0x37 cmd id [value]` | ⇄ | настройка параметров блока (config.html), см. раздел 11 |
 
 **Поведение объектов:**
@@ -221,6 +222,7 @@ Destroy(): this.control.destroy(); super.Destroy();
 | `button` | кнопка (TOGGLE / SET / ACTION) | ✓ | — |
 | `radio` | выбор значения из списка | ✓ | — |
 | `range` | ползунок, SET по отпусканию | ✓ | — |
+| `livecontrol` | ползунок с удержанием: пока держат — значение каждые `interval` мс (`0x01` или `0x0A` со счётчиком), отпустили — `default`; ответов не ждёт | ✓ | — |
 
 **autocolor** (`"autocolor": true`, по умолчанию выключен): fId `0x61/62/63` → класс `color-normal/warning/critical`; `0x65` цвет не меняет. **Добавить виджет:** `js/client/widgets/xxx.js` (наследник `UIWidget`, `static type`), одна строка регистрации в `app-client.js`, описание в `WIDGETS.md`.
 

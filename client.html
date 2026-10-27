@@ -29,6 +29,7 @@
 		<ui-element type="value" obj="0x011D" config='{"name":"Темп. контроллера 2","format":"${value:%d}°C ${expr}","type":"int16","expr":[[">",120,"CRIT"],[">",70,"WARN"],["NORM"]],"chart":{"count":64,"mode":"line"}}'></ui-element>
 		<br>
 		<ui-element type="range" obj="0x0104,0x0105" config='{"name":"Газ М1+М2","format":"${value:%d}","type":"uint16","min":0,"max":1023,"step":1}'></ui-element>
+		<ui-element type="livecontrol" obj="0x0104,0x0105" config='{"name":"Газ М1+М2 (удержание)","format":"${value:%d}","type":"uint16","min":0,"max":1023,"default":0,"interval":100,"mode":"realtime"}'></ui-element>
 		<ui-element type="radio" obj="0x0106,0x0107" config='{"name":"КПП М1+М2","radios":"0:N,1:F,2:R,4:L,8:B","type":"uint8"}'></ui-element>
 		<ui-element type="button" obj="0x0108,0x0109" config='{"name":"Рекуперация М1+М2","format":"${icon1}[${txt}] ${count}","type":"uint8","txt":"255:ON,0:OFF"}'></ui-element>
 		<ui-element type="button" obj="0x010A,0x010B" config='{"name":"Зажигание М1+М2","format":"${icon1}[${txt}] ${count}","type":"uint8","txt":"255:ON,0:OFF"}'></ui-element>
