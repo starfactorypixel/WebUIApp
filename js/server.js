@@ -24,6 +24,12 @@ const log_ws = Log.source('ws');
 console.log = Log.source('server');
 console.error = console.log;
 
+// Node 26.4+: serialport (@serialport/bindings-cpp ≤ 13.0.1) не будит цикл событий после приёма — данные UART
+// приходят пачками с задержкой, beacon теряются. Работает на Node 24. Убрать, когда в bindings-cpp выйдет исправление
+const [node_major, node_minor] = process.versions.node.split('.').map(Number);
+if(node_major > 26 || (node_major === 26 && node_minor >= 4))
+	log_serial('ВНИМАНИЕ: Node ' + process.versions.node + ' — serialport на Node 26.4+ работает с задержками и потерями, нужен Node 24');
+
 const { SerialPort } = require('serialport');
 const WebSocket = require('ws');
 const L3Packet = require('./utils/L3Packet.js');
