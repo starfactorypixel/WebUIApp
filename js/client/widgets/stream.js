@@ -7,12 +7,15 @@ import { sprintfNamed, escapeHtml } from '../../utils/format.js';
 //
 // Компактная сетка: в ячейке номер (мелко) и значение; ячейки по возрастанию номера, по columns в строке.
 // Ячейка с минимальным значением подсвечивается синим, с максимальным — красным.
+// Каждое обновление ячейки — короткая затухающая вспышка (CSS-анимация, классы is-flash-a / is-flash-b по очереди:
+// смена имени анимации перезапускает её без принудительного пересчёта раскладки).
 //
 // config:
 //   format   — формат ЗНАЧЕНИЯ ячейки: "${value:%1.3f}" (номер выводится отдельно)
 //   columns  — ячеек в строке (по умолчанию 8)
 //   interval — мс, автозапрос всех значений; кнопки «Запрос» нет.
 //              0 или не задан — только ручной запрос кнопкой ⟳
+//   nodata   — raw-значение «датчика нет» (например 0): ячейка серая (is-nodata) и не участвует в мин/макс
 
 const FID_REQUEST = 0x11;
 
@@ -74,7 +77,14 @@ export class StreamWidget extends UIWidget
 		}
 
 		cell.value = value;
+		cell.nodata = value_raw === this.config.nodata;
 		cell.val.textContent = sprintfNamed(this.config.format || '${value}', { number, value, value_raw });
+		cell.el.classList.toggle('is-nodata', cell.nodata);
+
+		// Вспышка: другое имя анимации — она запускается заново
+		const flash = cell.el.classList.contains('is-flash-a') ? 'is-flash-b' : 'is-flash-a';
+		cell.el.classList.remove('is-flash-a', 'is-flash-b');
+		cell.el.classList.add(flash);
 
 		this.#markMinMax();
 	}
@@ -90,21 +100,21 @@ export class StreamWidget extends UIWidget
 		const next = [...this.refs.container.children].find(c => Number(c.dataset.number) > number);
 		this.refs.container.insertBefore(el, next ?? null);
 
-		return { el, val: el.querySelector('.ui-stream_val'), value: null };
+		return { el, val: el.querySelector('.ui-stream_val'), value: null, nodata: false };
 	}
 
-	// Подсветка минимума и максимума (если значения не все одинаковые)
+	// Подсветка минимума и максимума (если значения не все одинаковые); ячейки «датчика нет» не считаются
 	#markMinMax()
 	{
-		const values = [...this.refs.cells.values()].map(c => c.value);
+		const values = [...this.refs.cells.values()].filter(c => !c.nodata).map(c => c.value);
 		const min = Math.min(...values);
 		const max = Math.max(...values);
 		const differ = min !== max;
 
 		for(const cell of this.refs.cells.values())
 		{
-			cell.el.classList.toggle('is-min', differ && cell.value === min);
-			cell.el.classList.toggle('is-max', differ && cell.value === max);
+			cell.el.classList.toggle('is-min', differ && !cell.nodata && cell.value === min);
+			cell.el.classList.toggle('is-max', differ && !cell.nodata && cell.value === max);
 		}
 	}
 }

@@ -79,6 +79,18 @@ ui-element .ui_title {
 	background: #fde2e2;
 }
 
+/* «Датчика нет» (config.nodata): серая, без фона */
+.ui-stream_cell.is-nodata {
+	background: transparent;
+	color: #aaa;
+}
+
+/* Вспышка при обновлении ячейки: два одинаковых keyframes, чтобы смена класса перезапускала анимацию */
+.ui-stream_cell.is-flash-a { animation: ui-stream-flash-a 0.6s ease-out; }
+.ui-stream_cell.is-flash-b { animation: ui-stream-flash-b 0.6s ease-out; }
+@keyframes ui-stream-flash-a { from { box-shadow: inset 0 0 0 20px rgba(255, 190, 0, 0.25); } }
+@keyframes ui-stream-flash-b { from { box-shadow: inset 0 0 0 20px rgba(255, 190, 0, 0.25); } }
+
 .ui-radio_content label {
 	display: flex;
 	padding: 6px;
