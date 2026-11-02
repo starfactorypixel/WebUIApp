@@ -1,5 +1,7 @@
 {
-  "CanSub": { "fid": "0x12", "min_length": 2 },
-  "Script": { "fid": "0x1B", "min_length": 3 },
-  "CanMsg": { "fid": "0x35", "min_length": 4 }
+  "CanSub"    : {"fid": "0x12", "min_length":  2},
+  "ScriptCtrl": {"fid": "0x1B", "min_length":  3},
+  "BlockInfo" : {"fid": "0x1D", "min_length": 32},
+  "BlockErr"  : {"fid": "0x1E", "min_length":  9},
+  "CanMsg"    : {"fid": "0x35", "min_length":  4}
 }

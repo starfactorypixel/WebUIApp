@@ -5,7 +5,7 @@ L3Packet — клиент протокола L3 (связь с ESP32 по UART).
 	const l3 = new L3Packet(config, serialPort);		// config.l3 + config.serial.debug; сам читает порт и пишет в него
 	l3.add(msg); l3.add(msg); l3.commit();				// сообщения подряд в пакет, как AddPacket/Commit в ESP
 	l3.send(msg);										// одно сообщение отдельным пакетом
-	l3.fid.Script										// fId по имени из l3_fids.json
+	l3.fid.ScriptCtrl									// fId по имени из l3_fids.json
 
 Размер DATA — config.l3.data_max (должен совпадать с ESP). Сообщение — [fId][данные…], не длиннее l3.msg_max (= min(data_max − 1, 255)).
 DATA — сообщения подряд, перед каждым его длина: [len u8][fId][данные…] [len][fId][…] …

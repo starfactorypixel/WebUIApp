@@ -56,7 +56,7 @@ js/utils/logcmd.js             Node: неблокирующий лог серв�
 
 js/app-client.js               вход client.html: регистрация виджетов, вкладки, Control.timeout, WSStart
 js/app-config.js               вход config.html: связывает карточки блоков и панель настроек
-js/config/blockinfo.js         карточки найденных блоков из пакета 0x0A, выбор блока
+js/config/blockinfo.js         карточки найденных блоков из пакета 0x1D, выбор блока
 js/config/blockparams.js       панель настроек блока: параметры из blocks.json, подписка, пакетное чтение, запись
 
 js/app-scripts.js              вход scripts.html: связывает список, редактор и операции
@@ -112,7 +112,7 @@ SCRIPTS_PROTOCOL.md            скрипты в этом проекте: ком
 | cmd | data | Кому | Событие в `ws.js` |
 |---|---|---|---|
 | `CanMsg` | `{id, bytes}` | **только клиентам, подписанным на этот obj** | `packet` {id, bytes} → `subscriptions.js` → виджеты |
-| `Raw` | `{bytes}` | всем | `packetRaw` {bytes} (например, информация о блоке, fId 0x0A) |
+| `Raw` | `{bytes}` | всем | `packetRaw` {bytes} (например, информация о блоке, fId 0x1D) |
 | `Script*Resp`, `ScriptProgress` | см. `SCRIPTS_PROTOCOL.md` | только запросившему | `response` {cmd, data} |
 
 Функции отправки в браузере: `WSSendCanMsg(id, bytes)`, `WSSendCanMsgBatch([{id, bytes}, ...])`, `WSSendRaw(bytes)`, `WSCanSub(sub, unsub)`. Без связи они возвращают `false`: команды **не копятся**, иначе нажатие могло бы сработать на железе через минуту.
@@ -240,7 +240,7 @@ Destroy(): this.control.destroy(); super.Destroy();
 ## 11. Режим настройки (`config.html`)
 
 **Как работает:**
-1. Каждый блок раз в ~5 с присылает пакет информации (`Raw`, fId `0x0A`, 32 байта). `BlockInfo` рисует карточку на каждый `baseID`: имя типа из `blocks.json`, версии, SN, uptime, напряжение, ток, температура, флаги ошибок. Тип, которого нет в `blocks.json`, подписан красным; карточка с ненулевыми флагами ошибок — розовая.
+1. Каждый блок раз в ~5 с присылает пакет информации (`Raw`, fId `0x1D`, 32 байта). `BlockInfo` рисует карточку на каждый `baseID`: имя типа из `blocks.json`, версии, SN, uptime, напряжение, ток, температура, флаги ошибок. Тип, которого нет в `blocks.json`, подписан красным; карточка с ненулевыми флагами ошибок — розовая.
 2. Клик по карточке → `BlockParams.Open(info)`:
    - параметры берутся из `blocks.json → blocks[type == hw_type].params` и рисуется список (номер, имя, описание, поле с `min/max/step`, кнопки 📥 прочитать / 💾 записать / 🔄 значение по умолчанию); в шапке панели — «📥 Прочитать всё», «💾 Сохранить всё и перезагрузить», ✕;
    - obj настроек = `baseID + blocks.json → offset`; на него оформляется подписка через `subscriptions.js`;

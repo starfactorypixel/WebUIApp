@@ -265,7 +265,7 @@ function BuildCanMsg(id, bytes)
 // поэтому заголовок своего типа можно читать без проверки длины. Типы не из l3_fids.json — браузеру как Raw.
 obj_l3.on('message', (fId, data) =>
 {
-	if(fId === obj_l3.fid.Script)
+	if(fId === obj_l3.fid.ScriptCtrl)
 	{
 		scripts.onMessage(data);
 		return;

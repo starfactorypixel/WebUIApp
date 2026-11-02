@@ -1,6 +1,6 @@
 // Вход config.html: найденные блоки и настройка выбранного.
 //
-//   пакет 0x0A (Raw) → карточка блока (BlockInfo)
+//   пакет 0x1D (Raw) → карточка блока (BlockInfo)
 //   клик по карточке  → панель настроек (BlockParams): параметры из blocks.json, чтение/запись
 
 import { WSEvents, WSStart } from './utils/ws.js';

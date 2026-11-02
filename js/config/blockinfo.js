@@ -1,11 +1,11 @@
 // Карточки блоков, найденных в системе.
 //
-// Каждый блок раз в несколько секунд присылает пакет с информацией о себе (fId 0x0A, приходит как Raw).
+// Каждый блок раз в несколько секунд присылает пакет с информацией о себе (fId 0x1D, приходит как Raw).
 // На каждый baseID рисуется карточка, при повторных пакетах она обновляется.
 // Клик по карточке → onSelect(info) — открыть настройки этого блока.
 //
 // Пакет (little-endian, 32 байта):
-//   [0]     fId 0x0A
+//   [0]     fId 0x1D
 //   [1..2]  baseID u16        [3] hw_type   [4] hw_ver   [5] sw_ver   [6] can_ver
 //   [7..14] SN, 8 байт        [15..21] features, 7 байт
 //   [22..25] uptime u32, мс   [26..27] voltage u16, мВ  [28..29] current u16, мА
@@ -13,7 +13,7 @@
 
 import { Int2Hex, FastFormatMs, escapeHtml } from '../utils/format.js';
 
-export const FID_BLOCK_INFO = 0x0A;
+export const FID_BLOCK_INFO = 0x1D;
 const PACKET_LEN = 32;
 
 export class BlockInfo
@@ -35,7 +35,7 @@ export class BlockInfo
 		this.#onSelect = onSelect;
 	}
 
-	// Пакет 0x0A → карточка
+	// Пакет FID_BLOCK_INFO → карточка
 	processPacket(bytes)
 	{
 		const info = this.#parse(bytes);

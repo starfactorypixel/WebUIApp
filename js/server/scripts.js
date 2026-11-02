@@ -62,7 +62,7 @@ class Scripts
 	{
 		this.#l3 = l3;
 		this.#log = log;
-		this.#fid = l3.fid.Script;
+		this.#fid = l3.fid.ScriptCtrl;
 
 		// Связь с ESP пропала — ждать ответа бессмысленно
 		l3.on('disconnect', () => this.#fail(new Error('связь с ESP потеряна')));
