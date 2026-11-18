@@ -2,14 +2,18 @@
   "opcodes"  : [
     {
       "code"  : "0x01",
-      "length": 6,
+      "length": 10,
       "name"  : "ScriptInit",
       "format": [
         {"name": "mode", "type": "enum", "enum": "modeType"},
+        {"name": "d0", "type": "uint8", "print": "hex:2"},
         {"name": "d1", "type": "uint8", "print": "hex:2"},
         {"name": "d2", "type": "uint8", "print": "hex:2"},
         {"name": "d3", "type": "uint8", "print": "hex:2"},
-        {"name": "d4", "type": "uint8", "print": "hex:2"}
+        {"name": "d4", "type": "uint8", "print": "hex:2"},
+        {"name": "d5", "type": "uint8", "print": "hex:2"},
+        {"name": "d6", "type": "uint8", "print": "hex:2"},
+        {"name": "d7", "type": "uint8", "print": "hex:2"}
       ]
     },
     {
@@ -24,31 +28,35 @@
     },
     {
       "code"  : "0x03",
-      "length": 5,
+      "length": 9,
       "name"  : "SetScriptArgVal",
       "format": [
-        {"name": "id",  "type": "uint16", "print": "hex:4"},
-        {"name": "idx", "type": "uint8"                   },
-        {"name": "val", "type": "uint8",  "print": "hex:2"}
+        {"name": "id", "type": "uint16", "print": "hex:4"},
+        {"name": "type", "type": "enum", "enum": "dataType"},
+        {"name": "offset", "type": "uint8"},
+        {"name": "val", "type": "int32"}
       ]
     },
     {
       "code"  : "0x04",
-      "length": 5,
-      "name"  : "SetScriptArgReg8",
+      "length": 6,
+      "name"  : "SetScriptArgReg",
       "format": [
-        {"name": "id",  "type": "uint16", "print": "hex:4"},
-        {"name": "idx", "type": "uint8"                   },
-        {"name": "reg", "type": "reg"                     }
+        {"name": "id", "type": "uint16", "print": "hex:4"},
+        {"name": "type", "type": "enum", "enum": "dataType"},
+        {"name": "offset", "type": "uint8"},
+        {"name": "reg", "type": "reg"}
       ]
     },
     {
       "code"  : "0x05",
-      "length": 4,
-      "name"  : "SetScriptArgReg32",
+      "length": 6,
+      "name"  : "GetScriptArgReg",
       "format": [
-        {"name": "id",  "type": "uint16", "print": "hex:4"},
-        {"name": "reg", "type": "reg"                     }
+        {"name": "reg", "type": "reg"},
+        {"name": "id", "type": "uint16", "print": "hex:4"},
+        {"name": "type", "type": "enum", "enum": "dataType"},
+        {"name": "offset", "type": "uint8"}
       ]
     },
     {
@@ -434,20 +442,21 @@
   ],
   "registers": {
     "0"  : "DUMMY",
-    "1"  : "SCRIPT_ID",
-    "2"  : "DATA0",
-    "3"  : "DATA1",
-    "4"  : "DATA2",
-    "5"  : "DATA3",
-    "6"  : "A",
-    "7"  : "B",
-    "8"  : "C",
-    "9"  : "D",
-    "10" : "E",
-    "11" : "F",
-    "12" : "G",
-    "13" : "H",
-    "14" : "I",
+    "1"  : "TRIG_ID",
+    "2"  : "NOW_ID",
+    "3"  : "A",
+    "4"  : "B",
+    "5"  : "C",
+    "6"  : "D",
+    "7"  : "E",
+    "8"  : "F",
+    "9"  : "G",
+    "10" : "H",
+    "11" : "I",
+    "12" : "J",
+    "13" : "K",
+    "14" : "L",
+    "15" : "M",
     "255": "-"
   },
   "enums"    : {
