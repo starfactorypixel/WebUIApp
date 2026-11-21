@@ -4,10 +4,13 @@
 //   ScriptSave {id, data}   ← ScriptSaveResp   {id}
 //   ScriptDelete {id}       ← ScriptDeleteResp {id}
 //   ScriptReload {}         ← ScriptReloadResp {count}
-//   ScriptList {}           ← ScriptListResp   {scripts: [{id, length, flags}], reload_needed}
-//   ScriptEnable {id, on}   ← ScriptEnableResp {id, flags}
+//   ScriptList {}           ← ScriptListResp   {scripts: [{id, length, flags, state}], reload_needed}
+//   ScriptEnable {id, on}   ← ScriptEnableResp {id, flags, state}
 //   во время чтения/записи  ← ScriptProgress   {done, total}
 // Ошибка — поле error в ответе (пишется в лог, onResult не вызывается).
+//
+// state — фактическое состояние скрипта в runtime (см. STATE_* ниже).
+// flags — это intent пользователя / галочка «вкл».
 //
 // Одновременно — одна операция: следующая не отправится, пока нет ответа или OP_TIMEOUT_MS.
 
@@ -18,6 +21,15 @@ import { Int2Hex } from '../utils/format.js';
 const OP_TIMEOUT_MS = 15000;	// сервер сам ограничивает каждый шаг; это — страховка
 
 export const FLAG_ENABLED = 0x04;
+
+export const STATE =
+{
+	DISABLED_UNKOP:  -3,	// Авто-отключён: нет оператора
+	DISABLED_LOOP:   -2,	// Авто-отключён: зацикливание
+	DISABLED:        -1,	// Отключён пользователем (галочка снята)
+	NONE:             0,	// Не загружен / Неизвестно
+	ENABLED:          1,	// Включён и исполняется
+};
 
 export class ScriptOps
 {

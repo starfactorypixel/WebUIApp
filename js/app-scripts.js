@@ -32,7 +32,7 @@ const ops = new ScriptOps({
 		{
 			case 'ScriptLoadResp':   editor.Set(data.id, data.data); list.Mark(data.id); break;
 			case 'ScriptListResp':   list.Show(data.scripts, data.reload_needed); break;
-			case 'ScriptEnableResp': list.SetFlags(data.id, data.flags); break;
+			case 'ScriptEnableResp': list.Update(data.id, { flags: data.flags, state: data.state }); break;
 			default:                 ops.List();	// записан, удалён, перезагружены — список изменился
 		}
 	},

@@ -30,7 +30,7 @@ const REQ_HEADER_LEN = 2;							// fId, cmd
 const RESP_HEADER_LEN = REQ_HEADER_LEN + 1;			// + status
 const WRITE_HEADER_LEN = REQ_HEADER_LEN + 4;		// + id u16, offset u16
 const READ_RESP_HEADER_LEN = RESP_HEADER_LEN + 4;	// + id u16, offset u16
-const LIST_ENTRY_LEN = 5;							// id u16, length u16, flags u8
+const LIST_ENTRY_LEN = 6;							// id u16, length u16, flags u8, state i8 (signed)
 const LIST_END = 0xFFFF;
 
 const STEP_TIMEOUT_MS = 1100;				// ожидание ответа на один запрос
@@ -89,8 +89,8 @@ class Scripts
 	{
 		return this.#run('информация', async () =>
 		{
-			const r = await this.#request(CMD.INFO, U16(id));	// id, length, crc32, flags
-			return { id, length: r.readUInt16LE(2), crc32: r.readUInt32LE(4), flags: r[8] };
+			const r = await this.#request(CMD.INFO, U16(id));	// id, length, crc32, flags, state
+			return { id, length: r.readUInt16LE(2), crc32: r.readUInt32LE(4), flags: r[8], state: r.readInt8(9) };
 		});
 	}
 
@@ -165,8 +165,8 @@ class Scripts
 	{
 		return this.#run('включение', async () =>
 		{
-			const r = await this.#request(CMD.ENABLE, [...U16(id), on ? 1 : 0]);	// id, flags
-			return { id, flags: r[2] };
+			const r = await this.#request(CMD.ENABLE, [...U16(id), on ? 1 : 0]);	// id, flags, state
+			return { id, flags: r[2], state: r.readInt8(3) };
 		});
 	}
 
@@ -185,7 +185,7 @@ class Scripts
 				const next = r.readUInt16LE(1);
 
 				for(let o = 3; o + LIST_ENTRY_LEN <= r.length; o += LIST_ENTRY_LEN)
-					scripts.push({ id: r.readUInt16LE(o), length: r.readUInt16LE(o + 2), flags: r[o + 4] });
+					scripts.push({ id: r.readUInt16LE(o), length: r.readUInt16LE(o + 2), flags: r[o + 4], state: r.readInt8(o + 5) });
 
 				if(next !== LIST_END && next <= from) throw new Error('ESP вернул неверное продолжение списка');
 				from = next;
